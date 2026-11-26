@@ -9,6 +9,9 @@ type t = {
   mutable leave : float;
   mutable rate : float;
   mutable blur : int;
+  (* absence *)
+  mutable absent_brightness : float;
+  mutable absent_delay : float;
   (* gestes *)
   mutable hold : float;
   mutable cooldown : float;
@@ -30,6 +33,8 @@ let of_config (c : Config.t) =
     leave = c.seg_leave;
     rate = c.seg_rate;
     blur = c.blur;
+    absent_brightness = c.absent_brightness;
+    absent_delay = c.absent_delay;
     hold = c.hold;
     cooldown = c.cooldown;
     min_score = c.min_score;
@@ -49,6 +54,8 @@ let to_config l =
     ("segmentation", "leave", Printf.sprintf "%.2f" l.leave);
     ("segmentation", "rate", Printf.sprintf "%.2f" l.rate);
     ("background", "blur", string_of_int l.blur);
+    ("background", "absent_brightness", Printf.sprintf "%.2f" l.absent_brightness);
+    ("background", "absent_delay", Printf.sprintf "%.1f" l.absent_delay);
     ("gestures", "hold", Printf.sprintf "%.2f" l.hold);
     ("gestures", "cooldown", Printf.sprintf "%.2f" l.cooldown);
     ("gestures", "min_score", Printf.sprintf "%.2f" l.min_score);

@@ -557,13 +557,13 @@ let run ~config ~bg ~no_output ~input ~snapshot ~max_frames ~record ~ui =
          (let t = now () and dt = now () -. !tick in
           live.presence <- seg.coverage;
           if seg.coverage > 0.03 then last_present := t;
-          let absent = t -. !last_present > cfg.absent_delay in
+          let absent = t -. !last_present > live.absent_delay in
           if absent <> !away then (
             away := absent;
             log (if absent then "personne absente : fond tamisé" else "personne de retour"));
           let target =
             if absent && bgs.current <> "blur" && bgs.current <> "none" then
-              cfg.absent_brightness
+              live.absent_brightness
             else 1.
           in
           (* Descend en 1,5 s, remonte en 0,4 s. *)

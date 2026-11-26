@@ -13,7 +13,7 @@ external sdl_poll : unit -> int * int * int = "bgcam_ui_poll"
 external sdl_close : unit -> unit = "bgcam_ui_close"
 
 let ww = 1110
-let wh = 620
+let wh = 690
 
 (* Aperçu, en 16:9. *)
 let vx = 12
@@ -76,7 +76,7 @@ type slider = {
 
 let track_x = px + 10
 let track_w = pw - 20
-let slider_h = 50
+let slider_h = 46
 let track_dy = 30
 
 type button = {
@@ -131,9 +131,10 @@ let run (live : Live.t) ~config_path ~backgrounds (preview : Img.t) =
   sdl_open "bgcam — réglages" ww wh 16;
   let pct v = Printf.sprintf "%.2f" v and sec v = Printf.sprintf "%.2f s" v in
   let y0 = 44 in
-  let mk i label lo hi step get set fmt =
-    { label; lo; hi; step; get; set; fmt; sy = y0 + (i * slider_h) + (if i >= 4 then 40 else 0) }
-  in
+  (* Sections : détourage (0-3), absence (4-5), gestes (6-9). *)
+  let section_gap = 40 in
+  let top i = y0 + (i * slider_h) + (if i >= 4 then section_gap else 0) + if i >= 6 then section_gap else 0 in
+  let mk i label lo hi step get set fmt = { label; lo; hi; step; get; set; fmt; sy = top i } in
   let sliders =
     [
       mk 0 "Entrée dans la silhouette" 0. 1. 0.01
@@ -156,19 +157,27 @@ let run (live : Live.t) ~config_path ~backgrounds (preview : Img.t) =
         (fun () -> float live.blur)
         (fun v -> live.blur <- int_of_float v)
         (fun v -> Printf.sprintf "%.0f" v);
-      mk 4 "Maintien du geste" 0. 1.5 0.05
+      mk 4 "Luminosité quand je sors" 0. 1. 0.01
+        (fun () -> live.absent_brightness)
+        (fun v -> live.absent_brightness <- v)
+        (fun v -> Printf.sprintf "%.0f %%" (v *. 100.));
+      mk 5 "Délai avant tamisage" 0. 15. 0.5
+        (fun () -> live.absent_delay)
+        (fun v -> live.absent_delay <- v)
+        (fun v -> Printf.sprintf "%.1f s" v);
+      mk 6 "Maintien du geste" 0. 1.5 0.05
         (fun () -> live.hold)
         (fun v -> live.hold <- v)
         sec;
-      mk 5 "Délai entre gestes" 0. 5. 0.1
+      mk 7 "Délai entre gestes" 0. 5. 0.1
         (fun () -> live.cooldown)
         (fun v -> live.cooldown <- v)
         sec;
-      mk 6 "Confiance min. (prédéfinis)" 0. 1. 0.01
+      mk 8 "Confiance min. (prédéfinis)" 0. 1. 0.01
         (fun () -> live.min_score)
         (fun v -> live.min_score <- v)
         pct;
-      mk 7 "Distance max. (personnels)" 0. 0.6 0.01
+      mk 9 "Distance max. (personnels)" 0. 0.6 0.01
         (fun () -> live.max_distance)
         (fun v -> live.max_distance <- v)
         pct;
@@ -258,7 +267,8 @@ let run (live : Live.t) ~config_path ~backgrounds (preview : Img.t) =
       draw_preview preview;
       rect (px - 8) 0 (pw + 16) wh c_panel;
       ignore (text ~c:c_dim (px + 10) 14 "DÉTOURAGE");
-      ignore (text ~c:c_dim (px + 10) (y0 + (4 * slider_h) + 14) "GESTES");
+      ignore (text ~c:c_dim (px + 10) (top 4 - section_gap + 14) "ABSENCE");
+      ignore (text ~c:c_dim (px + 10) (top 6 - section_gap + 14) "GESTES");
       List.iter draw_slider sliders;
       List.iter draw_button buttons;
       let ty = vy + vh + 10 in
