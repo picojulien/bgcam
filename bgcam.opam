@@ -4,7 +4,7 @@ synopsis:
   "Webcam virtuelle : détourage, flou ou fond animé, changement de fond par gestes"
 depends: [
   "dune" {>= "3.10"}
-  "ocaml" {>= "5.1"}
+  "ocaml" {>= "5.2"}
   "odoc" {with-doc}
 ]
 build: [

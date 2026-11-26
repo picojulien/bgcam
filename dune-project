@@ -10,4 +10,4 @@
   "Webcam virtuelle : détourage, flou ou fond animé, changement de fond par gestes")
  (depends
   (ocaml
-   (>= 5.1))))
+   (>= 5.2))))

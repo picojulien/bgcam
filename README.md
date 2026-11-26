@@ -1,81 +1,142 @@
 # bgcam
 
-Webcam virtuelle : lit la webcam, détoure la personne, floute le fond ou le
-remplace par un WebP animé ou une vidéo en boucle, et publie le résultat sur un
-périphérique v4l2loopback utilisable dans Meet. Des gestes de la main changent
-le fond.
+Webcam virtuelle pour Linux : bgcam lit la webcam, détoure la personne,
+floute le fond ou le remplace (image, vidéo en boucle, scène animée), et
+publie le résultat sur une caméra virtuelle utilisable dans Meet, Zoom,
+Jitsi… Des gestes de la main changent le fond.
 
-Écrit en OCaml 5. Le C (`src/stubs.c`) se limite aux appels de bibliothèques
-système : TFLite (inférence), V4L2 (capture et sortie), libjpeg, libwebp.
+Écrit en OCaml 5. Le C (`src/stubs.c`, `src/ui_stubs.c`) se limite aux appels
+de bibliothèques système : TFLite (inférence), V4L2 (capture et sortie),
+libjpeg, libwebp, SDL2 (fenêtre de réglage).
 
-## Prérequis
+## Installation
+
+Testé sur Debian 13 et testing (« forky »). Les noms de paquets ci-dessous
+sont ceux de Debian ; ailleurs, chercher les mêmes bibliothèques.
+
+### 1. Dépendances système
 
 ```bash
-sudo apt install libtensorflow-lite-dev libjpeg-dev libwebp-dev libsdl2-dev libsdl2-ttf-dev \
-  fonts-dejavu-core curl unzip ffmpeg
-# webcam virtuelle (demande les en-têtes du noyau en cours d'exécution)
-sudo apt install v4l2loopback-dkms linux-headers-amd64
+sudo apt install build-essential pkg-config curl unzip ffmpeg \
+  libtensorflow-lite-dev libjpeg-dev libwebp-dev \
+  libsdl2-dev libsdl2-ttf-dev fonts-dejavu-core \
+  v4l2loopback-dkms linux-headers-$(uname -r)
 ```
 
-Les modèles MediaPipe sont téléchargés au premier lancement dans
-`~/.cache/bgcam`.
+- `libtensorflow-lite-dev` : inférence des modèles MediaPipe (TFLite 2.14).
+- `ffmpeg` : lecture des fonds vidéo (WebM, MP4…).
+- `v4l2loopback-dkms` : la caméra virtuelle. DKMS compile le module pour le
+  noyau en cours, d'où les en-têtes `linux-headers-$(uname -r)`. Avec Secure
+  Boot, le module doit être signé (DKMS propose d'enrôler une clé MOK à
+  l'installation).
 
-## Construction
+### 2. OCaml (5.2 ou plus) et dune
+
+bgcam n'utilise aucune bibliothèque OCaml hors de la distribution standard ;
+il suffit du compilateur et de dune. Avec opam :
 
 ```bash
+sudo apt install opam
+opam init                      # une fois
+opam switch create bgcam 5.3.0
+eval $(opam env --switch=bgcam)
+opam install dune
+```
+
+Si la distribution fournit déjà OCaml ≥ 5.2 et dune, ils conviennent.
+
+### 3. Compilation
+
+```bash
+git clone git@github.com:picojulien/bgcam.git
+cd bgcam
 dune build
-dune install   # ou lancer _build/default/src/main.exe
+dune install                   # installe `bgcam` dans le switch opam
 ```
 
-## Utilisation
+Sans `dune install`, le programme est `_build/default/src/main.exe`.
+
+### 4. Caméra virtuelle
+
+Créer la caméra (à refaire après chaque redémarrage) :
 
 ```bash
 sudo modprobe v4l2loopback devices=1 video_nr=10 card_label=bgcam exclusive_caps=1
-mkdir -p ~/.config/bgcam && cp config.toml ~/.config/bgcam/
-bgcam
 ```
 
-Puis choisir la caméra « bgcam » dans Meet. Pour voir le résultat sans appel :
-`ffplay /dev/video10`.
+Pour qu'elle existe à chaque démarrage :
 
-La webcam réelle ne peut être ouverte que par une application à la fois :
-elle doit être libre quand bgcam démarre.
+```bash
+echo v4l2loopback | sudo tee /etc/modules-load.d/v4l2loopback.conf
+echo 'options v4l2loopback devices=1 video_nr=10 card_label=bgcam exclusive_caps=1' \
+  | sudo tee /etc/modprobe.d/v4l2loopback.conf
+```
 
-Options : `--config FICHIER`, `--bg NOM` (fond de départ). Pour essayer sans
-webcam ni périphérique virtuel :
+`exclusive_caps=1` est nécessaire pour que Chrome et Firefox la voient comme
+une caméra.
+
+### 5. Configuration
+
+```bash
+mkdir -p ~/.config/bgcam
+cp config.toml ~/.config/bgcam/
+```
+
+Le fichier est commenté ; les fonds (`[backgrounds]`) et les gestes
+(`[gestures.map]`) s'y déclarent. Sans fichier, bgcam floute le fond.
+
+### 6. Premier essai
+
+Sans webcam ni caméra virtuelle, sur une photo :
 
 ```bash
 bgcam --input photo.jpg --no-output --frames 60 --snapshot sortie.jpg
 ```
 
-## Fenêtre de réglage
+Le premier lancement télécharge les modèles MediaPipe (environ 9 Mo) dans
+`~/.cache/bgcam`.
+
+Puis pour de vrai, avec la fenêtre de réglage :
 
 ```bash
 bgcam --ui
 ```
 
-Ouvre à côté de la webcam virtuelle une fenêtre (SDL2) avec l'aperçu de la
-sortie, ce que voit la reconnaissance de gestes, des boutons pour choisir le
-fond (« refaire » passe à l'état suivant d'une scène) et des curseurs pour
-les seuils du détourage, la force du flou et les réglages des gestes. Les
-changements s'appliquent tout de suite ; « Enregistrer les réglages » les
-écrit dans le fichier de configuration en gardant ses commentaires. Fermer
-la fenêtre laisse bgcam tourner. Molette sur un curseur : un cran.
+Dans Meet, choisir la caméra **bgcam**. Pour voir la sortie sans appel :
+`ffplay /dev/video10`.
 
-## Configuration
+### Dépannage
 
-Voir `config.toml` : fonds nommés (WebP animé ou fixe, JPEG, vidéo lue par
-ffmpeg), fond de départ,
-force du flou, et table geste -> action.
+| Symptôme | Cause et solution |
+|---|---|
+| `webcam déjà utilisée par une autre application` | Une seule application peut lire la webcam : fermer l'onglet ou l'application qui l'utilise (`fuser -v /dev/video0` la nomme). Les autres doivent passer par la caméra « bgcam ». |
+| `/dev/video10 n'existe pas` | Charger le module (étape 4). |
+| « bgcam » absente de la liste des caméras du navigateur | PipeWire a recensé la caméra virtuelle avant que bgcam n'écrive dedans et l'a prise pour une sortie. Lancer bgcam avant le navigateur, ou `systemctl --user restart wireplumber`, puis recharger la page. |
+| `Permission denied` sur `/dev/video*` | Ajouter l'utilisateur au groupe `video` (`sudo usermod -aG video $USER`, puis se reconnecter). |
+| Image saccadée (15 i/s au lieu de 30) | Souvent la webcam qui ralentit en faible lumière : éclairer davantage. |
+| `modprobe: FATAL: Module v4l2loopback not found` | Le module n'est pas compilé pour ce noyau : réinstaller `linux-headers-$(uname -r)` puis `sudo dpkg-reconfigure v4l2loopback-dkms`. |
 
-Gestes reconnus : `Open_Palm`, `Closed_Fist`, `Victory`, `Thumb_Up`,
-`Thumb_Down`, `Pointing_Up`, `ILoveYou`. Actions : `blur`, `none`, `next`,
-`prev` ou un nom de fond. Un geste déclenche après avoir été tenu `hold`
-secondes.
+## Utilisation
 
-## Scènes
+```
+bgcam [--config FICHIER] [--bg NOM] [--ui] [--debug-gestures]
+```
 
-Un fond peut être un dossier de clips vidéo formant une scène à états :
+- `--bg NOM` : fond de départ (`blur`, `none` ou un nom de `[backgrounds]`).
+- `--ui` : fenêtre de réglage (voir plus bas).
+- `--debug-gestures` : journalise ce que voit la reconnaissance de gestes.
+- `--record NOM` : enregistre un geste personnel (voir plus bas).
+- `--input JPEG`, `--no-output`, `--frames N`, `--snapshot JPEG` : essais.
+
+Ctrl-C arrête bgcam proprement.
+
+## Fonds
+
+Déclarés dans `[backgrounds]` de la configuration :
+
+- image JPEG ou WebP, WebP animé ;
+- vidéo (WebM, MP4, MKV, MOV, GIF), lue en boucle par ffmpeg ;
+- **scène** : un dossier de clips formant une petite machine à états :
 
 ```
 vaisseau/
@@ -85,48 +146,70 @@ vaisseau/
   nebuleuse-etoiles.webm   transition retour
 ```
 
-Le geste associé à la scène l'affiche dans son premier état ; refait quand
+Le geste associé à une scène l'affiche dans son premier état ; refait quand
 la scène est affichée, il passe à l'état suivant par la transition (ignoré
-pendant une transition). Un fondu de 0,6 s masque le raccord entre une
-boucle interrompue et le début de la transition.
+pendant une transition). Un fondu de 0,6 s masque le raccord quand une
+boucle est interrompue. Les clips ne sont pas fournis : n'importe quelles
+vidéos dont les fins et débuts se raccordent conviennent.
 
-## Gestes personnels
+Sans geste, `blur` (flou) et `none` (image brute) sont toujours disponibles.
 
-Une pose de la main se fait apprendre en quelques secondes :
+## Gestes
+
+Gestes prédéfinis : `Open_Palm`, `Closed_Fist`, `Victory`, `Thumb_Up`,
+`Thumb_Down`, `Pointing_Up`, `ILoveYou`. Dans `[gestures.map]`, chaque geste
+reçoit une action : `blur`, `none`, `next`, `prev` ou un nom de fond.
+
+Un geste déclenche après avoir été tenu `hold` secondes, une seule fois : il
+doit disparaître 0,8 s avant de pouvoir redéclencher.
+
+### Gestes personnels
+
+Une pose de la main s'apprend en quelques secondes (bgcam ne doit pas déjà
+tourner, il tient la webcam) :
 
 ```bash
 bgcam --record pouce_index        # 100 exemples ; --samples N pour changer
 ```
 
-Après 3 s, bgcam enregistre la main visible. Pendant ce temps, varier un peu
-la pose (inclinaison, distance, main gauche et droite) ; `ffplay /dev/video10`
-montre l'image si la webcam virtuelle existe. Relancer la même commande
-ajoute des exemples. Le geste s'associe ensuite à une action comme les
-autres, dans `[gestures.map]` : `pouce_index = "next"`.
+Après 3 s, bgcam enregistre la main visible. Varier un peu la pose pendant
+ce temps (inclinaison, distance, main gauche et droite), dans la lumière où
+le geste servira. Relancer la même commande ajoute des exemples. Associer
+ensuite le geste à une action : `pouce_index = "next"` dans
+`[gestures.map]`.
 
 Les exemples sont dans `~/.config/bgcam/gestures/NOM.txt` ; supprimer le
-fichier oublie le geste. Reconnaissance : les 5 exemples les plus proches du
-plongement de la main (vecteur de 128 nombres calculé par le modèle
-gesture_embedder) ; le geste personnel l'emporte sur les gestes prédéfinis
-si la distance moyenne reste sous `max_distance`, sauf quand le classifieur
-prédéfini reconnaît avec assurance un autre geste que celui qu'il voit
-d'habitude dans les exemples (un poing proche d'une pose personnelle reste
-un poing). `--debug-gestures` affiche
-ce qui est vu et la distance. Seules les poses statiques d'une main sont
-reconnues, pas les mouvements.
+fichier oublie le geste. Un geste personnel est reconnu quand la main est
+assez proche de ses exemples (`max_distance`, distance affichée par `--ui` et
+`--debug-gestures`) ; un geste prédéfini reconnu avec assurance garde la
+priorité s'il diffère de ce que le classifieur voit dans les exemples. Seules
+les poses statiques d'une main sont reconnues, pas les mouvements. Choisir
+une pose qui ne ressemble pas à la main au repos.
 
-## Organisation
+## Fenêtre de réglage
 
+`bgcam --ui` ouvre une fenêtre avec l'aperçu de la sortie, ce que voit la
+reconnaissance de gestes, des boutons pour choisir le fond (« refaire » passe
+à l'état suivant d'une scène) et des curseurs pour les seuils du détourage,
+la force du flou et les réglages des gestes. Les changements s'appliquent
+tout de suite ; « Enregistrer les réglages » les écrit dans le fichier de
+configuration en gardant ses commentaires. Fermer la fenêtre laisse bgcam
+tourner.
+
+## Organisation du code
+
+- `src/main.ml` : fonds, scènes, déclenchement des gestes, boucle principale.
 - `src/img.ml` : images, flou, composition (parallélisée sur 4 domaines).
-- `src/seg.ml` : détourage (modèle selfie_segmenter).
+- `src/seg.ml` : détourage (modèle selfie_segmenter, hystérésis contre le
+  clignotement).
 - `src/hands.ml` : gestes ; réimplémente la chaîne MediaPipe (paume, zone de
   la main, 21 points, plongement, classifieur).
-- `src/custom.ml` : gestes personnels (exemples enregistrés, plus proches
-  voisins).
+- `src/custom.ml` : gestes personnels (plus proches voisins).
 - `src/live.ml`, `src/ui.ml`, `src/ui_stubs.c` : réglages en direct et
   fenêtre de réglage.
-- `src/main.ml` : fonds, déclenchement des gestes, boucle principale.
+- `src/config.ml` : lecture et écriture de la configuration.
+- `src/models.ml` : téléchargement des modèles.
 - `src/stubs.c` : liaisons C, dont l'opération TFLite
   `Convolution2DTransposeBias` que la bibliothèque Debian ne fournit pas.
 - `proto/` : premier prototype Python (MediaPipe officiel), gardé comme
-  référence de comparaison ; supprimable.
+  référence de comparaison.

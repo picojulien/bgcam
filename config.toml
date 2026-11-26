@@ -22,11 +22,11 @@ blur = 25
 # modèle) et n'en sort qu'en dessous de [leave] : l'écart supprime le
 # clignotement. Monter les deux favorise le fond (la personne peut
 # disparaître un peu) ; les baisser favorise la personne.
-enter = 0.68
-leave = 0.41
+enter = 0.75
+leave = 0.40
 # Poids de la nouvelle trame (0 à 1) : plus bas = plus stable, plus de
 # traînée sur les mouvements.
-rate = 0.42
+rate = 0.40
 
 # Fonds nommés : WebP animé (joué en boucle), WebP fixe, JPEG, ou vidéo
 # (WebM, MP4, MKV, MOV, GIF, lue en boucle par ffmpeg, depuis le début à
@@ -35,8 +35,8 @@ rate = 0.42
 # alphabétique au départ), "a-b" la transition de a vers b ; redemander la
 # scène (même geste) passe à l'état suivant par sa transition.
 [backgrounds]
-vaisseau = "~/Images/backgrounds/vaisseau"
-warp = "~/Images/backgrounds/spaceship_4_warp.webm"
+# vaisseau = "~/Vidéos/fonds/vaisseau"       # dossier : scène
+# espace = "~/Vidéos/fonds/espace.webm"
 # plage = "~/Vidéos/fonds/plage.webp"
 # bureau = "~/Images/bureau.jpg"
 
@@ -59,5 +59,6 @@ max_distance = 0.20
 [gestures.map]
 Victory = "none"
 Closed_Fist = "blur"
-engage = "vaisseau"
+# Geste personnel (bgcam --record engage) :
+# engage = "vaisseau"
 # Thumb_Up = "plage"
