@@ -151,7 +151,8 @@ la scène est affichée, il passe à l'état suivant par la transition (ignoré
 pendant une transition). Un fondu de 0,6 s masque le raccord quand une
 boucle est interrompue. Un fichier `masque.jpg` facultatif dans le dossier
 indique en blanc les zones à ne pas tamiser en l'absence de personne (une
-fenêtre sur l'extérieur, par exemple). Les clips ne sont pas fournis : n'importe quelles
+fenêtre sur l'extérieur, par exemple) ; un halo gris autour d'elle donne une
+pénombre naturelle, la lumière extérieure éclairant encore la pièce. Les clips ne sont pas fournis : n'importe quelles
 vidéos dont les fins et débuts se raccordent conviennent.
 
 Sans geste, `blur` (flou) et `none` (image brute) sont toujours disponibles.
