@@ -165,9 +165,9 @@ let run (live : Live.t) ~config_path ~backgrounds (preview : Img.t) =
         (fun () -> live.absent_delay)
         (fun v -> live.absent_delay <- v)
         (fun v -> Printf.sprintf "%.1f s" v);
-      mk 6 "Atténuation des zones claires" 0. 3. 0.05
-        (fun () -> live.absent_highlights)
-        (fun v -> live.absent_highlights <- v)
+      mk 6 "Atténuation des tons chauds" 0. 5. 0.1
+        (fun () -> live.absent_warm)
+        (fun v -> live.absent_warm <- v)
         (fun v -> Printf.sprintf "%.2f" v);
       mk 7 "Maintien du geste" 0. 1.5 0.05
         (fun () -> live.hold)

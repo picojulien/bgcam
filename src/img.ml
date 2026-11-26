@@ -307,19 +307,18 @@ let copy (img : t) =
   Array1.blit img.d c.d;
   c
 
-(* Assombrit [img] sur place : un pixel de luminance L (0 à 1) est
-   multiplié par k^(1 + highlights * L), donc les zones claires baissent plus
-   que les sombres. Là où [keep] (un octet par pixel) est blanc, la
+(* Assombrit [img] sur place, linéairement, et davantage les couleurs
+   chaudes : un pixel de chaleur C = max(0, rouge - bleu) / 255 est multiplié
+   par k^(1 + warm * C). Là où [keep] (un octet par pixel) est blanc, la
    luminosité est gardée, avec une transition selon le gris. *)
-let dim ?keep (img : t) k ~highlights =
+let dim ?keep (img : t) k ~warm =
   let lut =
-    Array.init 256 (fun l ->
-        int_of_float ((k ** (1. +. (highlights *. float l /. 255.))) *. 256.))
+    Array.init 256 (fun c -> int_of_float ((k ** (1. +. (warm *. float c /. 255.))) *. 256.))
   in
   for p = 0 to (img.w * img.h) - 1 do
     let i = p * 3 in
     let r = get img.d i and g = get img.d (i + 1) and b = get img.d (i + 2) in
-    let f = lut.(((r * 77) + (g * 150) + (b * 29)) lsr 8) in
+    let f = lut.(max 0 (r - b)) in
     let f =
       match keep with
       | None -> f

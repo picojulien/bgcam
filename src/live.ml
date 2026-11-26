@@ -12,7 +12,7 @@ type t = {
   (* absence *)
   mutable absent_brightness : float;
   mutable absent_delay : float;
-  mutable absent_highlights : float;
+  mutable absent_warm : float;
   (* gestes *)
   mutable hold : float;
   mutable cooldown : float;
@@ -36,7 +36,7 @@ let of_config (c : Config.t) =
     blur = c.blur;
     absent_brightness = c.absent_brightness;
     absent_delay = c.absent_delay;
-    absent_highlights = c.absent_highlights;
+    absent_warm = c.absent_warm;
     hold = c.hold;
     cooldown = c.cooldown;
     min_score = c.min_score;
@@ -58,7 +58,7 @@ let to_config l =
     ("background", "blur", string_of_int l.blur);
     ("background", "absent_brightness", Printf.sprintf "%.2f" l.absent_brightness);
     ("background", "absent_delay", Printf.sprintf "%.1f" l.absent_delay);
-    ("background", "absent_highlights", Printf.sprintf "%.2f" l.absent_highlights);
+    ("background", "absent_warm", Printf.sprintf "%.2f" l.absent_warm);
     ("gestures", "hold", Printf.sprintf "%.2f" l.hold);
     ("gestures", "cooldown", Printf.sprintf "%.2f" l.cooldown);
     ("gestures", "min_score", Printf.sprintf "%.2f" l.min_score);
