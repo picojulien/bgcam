@@ -462,7 +462,7 @@ let run ~config ~bg ~no_output ~input ~snapshot ~max_frames ~record ~ui =
   let blur = ref (Img.blur_create w h ~strength:live.blur) and blur_strength = ref live.blur in
   let comp = Img.compositor (Img.Pool.create 4) ~w ~h ~mw:Seg.size ~mh:Seg.size in
   let result = Img.create w h in
-  let fading = Img.create w h in
+  let fading = Img.create w h and dimmed = Img.create w h in
   let watcher =
     if record <> None || (cfg.gestures && cfg.gesture_map <> []) then
       Some (start_watcher cfg live record w h)
@@ -522,6 +522,30 @@ let run ~config ~bg ~no_output ~input ~snapshot ~max_frames ~record ~ui =
            blur_strength := live.blur;
            blur := Img.blur_create w h ~strength:live.blur);
          let blur = !blur in
+         (* Absence : sans personne détectée (silhouette sous 3 % de l'image à
+            la trame précédente) pendant [absent_delay] s, le fond baisse vers
+            [absent_brightness] en 1,5 s, et remonte en 1 s au retour. *)
+         (let t = now () and dt = now () -. !tick in
+          live.presence <- seg.coverage;
+          if seg.coverage > 0.03 then last_present := t;
+          let absent = t -. !last_present > live.absent_delay in
+          if absent <> !away then (
+            away := absent;
+            log (if absent then "personne absente : fond tamisé" else "personne de retour"));
+          let target = if absent then live.absent_brightness else 1. in
+          brightness :=
+            if target < !brightness then Float.max target (!brightness -. (dt /. 1.5))
+            else Float.min target (!brightness +. dt));
+         (* Fond image ou vidéo, assombri si besoin (présence ou absence) dans
+            une copie : ni la personne ni les zones du masque de la scène ne
+            sont touchées. *)
+         let full ?keep (img : Img.t) =
+           if !brightness > 0.999 && live.brightness > 0.999 then Img.Full img
+           else (
+             Bigarray.Array1.blit img.d dimmed.d;
+             Img.dim ?keep ~gain:live.brightness dimmed !brightness ~warm:live.absent_warm;
+             Img.Full dimmed)
+         in
          (shown :=
             match bgs.current with
             | "none" -> frame
@@ -533,48 +557,31 @@ let run ~config ~bg ~no_output ~input ~snapshot ~max_frames ~record ~ui =
                    draw (Img.Small blur.small))
                  else
                    match Hashtbl.find bgs.loops name with
-                   | Loop l -> draw (Img.Full (loop_frame l (now () -. bgs.since)))
+                   | Loop l -> draw (full (loop_frame l (now () -. bgs.since)))
                    | Video (_, r) ->
                        (* La trame ne doit pas changer pendant la composition. *)
                        let v = Option.get !r in
-                       Mutex.protect v.vm (fun () -> draw (Img.Full v.front))
+                       draw (Mutex.protect v.vm (fun () -> full v.front))
                    | Scene sc -> (
                        scene_tick sc w h;
                        match sc.player with
                        | Some v when Atomic.get v.primed ->
-                           Mutex.protect v.vm (fun () ->
-                               let k = (now () -. sc.fade_t0) /. fade_time in
-                               match sc.fade_from with
-                               | Some from when k < 1. ->
-                                   Img.blend from v.front k fading;
-                                   draw (Img.Full fading)
-                               | _ -> draw (Img.Full v.front))
+                           let keep = sc.keep in
+                           let bg =
+                             Mutex.protect v.vm (fun () ->
+                                 let k = (now () -. sc.fade_t0) /. fade_time in
+                                 match sc.fade_from with
+                                 | Some from when k < 1. ->
+                                     Img.blend from v.front k fading;
+                                     full ?keep fading
+                                 | _ -> full ?keep v.front)
+                           in
+                           draw bg
                        | _ ->
                            (* Avant la première trame : le flou. *)
                            Img.blur_update blur frame;
                            draw (Img.Small blur.small)));
                 result);
-         (let t = now () and dt = now () -. !tick in
-          live.presence <- seg.coverage;
-          if seg.coverage > 0.03 then last_present := t;
-          let absent = t -. !last_present > live.absent_delay in
-          if absent <> !away then (
-            away := absent;
-            log (if absent then "personne absente : fond tamisé" else "personne de retour"));
-          let target =
-            if absent && bgs.current <> "blur" && bgs.current <> "none" then
-              live.absent_brightness
-            else 1.
-          in
-          (* Descend en 1,5 s, remonte en 0,4 s. *)
-          brightness :=
-            if target < !brightness then Float.max target (!brightness -. (dt /. 1.5))
-            else Float.min target (!brightness +. (dt /. 0.4));
-          if !brightness < 0.999 && !shown == result then
-            match Hashtbl.find_opt bgs.loops bgs.current with
-            | Some (Scene { keep = Some keep; _ }) ->
-                Img.dim ~keep result !brightness ~warm:live.absent_warm
-            | _ -> Img.dim result !brightness ~warm:live.absent_warm);
          Option.iter (fun o -> Ffi.Out.write o !shown.d) out;
          Option.iter (fun (p : Img.t) -> Bigarray.Array1.blit !shown.d p.d) preview;
          let t = now () in

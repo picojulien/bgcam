@@ -309,11 +309,12 @@ let copy (img : t) =
 
 (* Assombrit [img] sur place, linéairement, et davantage les couleurs
    chaudes : un pixel de chaleur C = max(0, rouge - bleu) / 255 est multiplié
-   par k^(1 + warm * C). Là où [keep] (un octet par pixel) est blanc, la
+   par gain * k^(1 + warm * C). Là où [keep] (un octet par pixel) est blanc, la
    luminosité est gardée, avec une transition selon le gris. *)
-let dim ?keep (img : t) k ~warm =
+let dim ?keep ?(gain = 1.) (img : t) k ~warm =
   let lut =
-    Array.init 256 (fun c -> int_of_float ((k ** (1. +. (warm *. float c /. 255.))) *. 256.))
+    Array.init 256 (fun c ->
+        int_of_float (gain *. (k ** (1. +. (warm *. float c /. 255.))) *. 256.))
   in
   for p = 0 to (img.w * img.h) - 1 do
     let i = p * 3 in

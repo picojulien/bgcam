@@ -9,6 +9,7 @@ type t = {
   out_device : string;
   default_bg : string;
   blur : int;
+  brightness : float; (* luminosité du fond, personne présente *)
   absent_brightness : float; (* luminosité du fond quand personne n'est là *)
   absent_delay : float;
   absent_warm : float; (* atténuation supplémentaire des couleurs chaudes *)
@@ -100,6 +101,7 @@ let load path =
     out_device = get "output" "device" str "/dev/video10";
     default_bg = get "background" "default" str "blur";
     blur = get "background" "blur" int_of_string 25;
+    brightness = get "background" "brightness" float_of_string 1.;
     absent_brightness = get "background" "absent_brightness" float_of_string 0.35;
     absent_delay = get "background" "absent_delay" float_of_string 3.;
     absent_warm = get "background" "absent_warm" float_of_string 2.;

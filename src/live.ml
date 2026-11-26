@@ -10,6 +10,7 @@ type t = {
   mutable rate : float;
   mutable blur : int;
   (* absence *)
+  mutable brightness : float;
   mutable absent_brightness : float;
   mutable absent_delay : float;
   mutable absent_warm : float;
@@ -34,6 +35,7 @@ let of_config (c : Config.t) =
     leave = c.seg_leave;
     rate = c.seg_rate;
     blur = c.blur;
+    brightness = c.brightness;
     absent_brightness = c.absent_brightness;
     absent_delay = c.absent_delay;
     absent_warm = c.absent_warm;
@@ -56,6 +58,7 @@ let to_config l =
     ("segmentation", "leave", Printf.sprintf "%.2f" l.leave);
     ("segmentation", "rate", Printf.sprintf "%.2f" l.rate);
     ("background", "blur", string_of_int l.blur);
+    ("background", "brightness", Printf.sprintf "%.2f" l.brightness);
     ("background", "absent_brightness", Printf.sprintf "%.2f" l.absent_brightness);
     ("background", "absent_delay", Printf.sprintf "%.1f" l.absent_delay);
     ("background", "absent_warm", Printf.sprintf "%.2f" l.absent_warm);

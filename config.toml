@@ -16,6 +16,9 @@ device = "/dev/video10"
 default = "blur"
 # Force du flou (rayon en pixels, à la résolution de sortie).
 blur = 25
+# Luminosité du fond (image, vidéo, scène ; pas le flou) quand on est là :
+# 1 = inchangée. N'affecte ni la personne ni le masque d'une scène.
+brightness = 1.0
 # Quand personne n'est détecté pendant absent_delay secondes, le fond
 # (image, vidéo, scène ; pas le flou) baisse jusqu'à absent_brightness
 # (0 = noir, 1 = inchangé), puis revient dès le retour.

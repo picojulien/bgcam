@@ -156,7 +156,8 @@ vidéos dont les fins et débuts se raccordent conviennent.
 
 Sans geste, `blur` (flou) et `none` (image brute) sont toujours disponibles.
 
-Quand personne n'est détecté devant la caméra pendant `absent_delay`
+`brightness` (section `[background]`) règle la luminosité du fond derrière
+la personne, sans toucher à la personne. Quand personne n'est détecté devant la caméra pendant `absent_delay`
 secondes, le fond (image, vidéo ou scène) baisse jusqu'à
 `absent_brightness`, puis revient dès le retour.
 

@@ -13,7 +13,7 @@ external sdl_poll : unit -> int * int * int = "bgcam_ui_poll"
 external sdl_close : unit -> unit = "bgcam_ui_close"
 
 let ww = 1110
-let wh = 736
+let wh = 782
 
 (* Aperçu, en 16:9. *)
 let vx = 12
@@ -131,9 +131,9 @@ let run (live : Live.t) ~config_path ~backgrounds (preview : Img.t) =
   sdl_open "bgcam — réglages" ww wh 16;
   let pct v = Printf.sprintf "%.2f" v and sec v = Printf.sprintf "%.2f s" v in
   let y0 = 44 in
-  (* Sections : détourage (0-3), absence (4-6), gestes (7-10). *)
+  (* Sections : détourage (0-3), fond (4-7), gestes (8-11). *)
   let section_gap = 40 in
-  let top i = y0 + (i * slider_h) + (if i >= 4 then section_gap else 0) + if i >= 7 then section_gap else 0 in
+  let top i = y0 + (i * slider_h) + (if i >= 4 then section_gap else 0) + if i >= 8 then section_gap else 0 in
   let mk i label lo hi step get set fmt = { label; lo; hi; step; get; set; fmt; sy = top i } in
   let sliders =
     [
@@ -157,31 +157,35 @@ let run (live : Live.t) ~config_path ~backgrounds (preview : Img.t) =
         (fun () -> float live.blur)
         (fun v -> live.blur <- int_of_float v)
         (fun v -> Printf.sprintf "%.0f" v);
-      mk 4 "Luminosité quand je sors" 0. 1. 0.01
+      mk 4 "Luminosité du fond" 0. 1. 0.01
+        (fun () -> live.brightness)
+        (fun v -> live.brightness <- v)
+        (fun v -> Printf.sprintf "%.0f %%" (v *. 100.));
+      mk 5 "Luminosité quand je sors" 0. 1. 0.01
         (fun () -> live.absent_brightness)
         (fun v -> live.absent_brightness <- v)
         (fun v -> Printf.sprintf "%.0f %%" (v *. 100.));
-      mk 5 "Délai avant tamisage" 0. 15. 0.5
+      mk 6 "Délai avant tamisage" 0. 15. 0.5
         (fun () -> live.absent_delay)
         (fun v -> live.absent_delay <- v)
         (fun v -> Printf.sprintf "%.1f s" v);
-      mk 6 "Atténuation des tons chauds" 0. 5. 0.1
+      mk 7 "Atténuation des tons chauds" 0. 5. 0.1
         (fun () -> live.absent_warm)
         (fun v -> live.absent_warm <- v)
         (fun v -> Printf.sprintf "%.2f" v);
-      mk 7 "Maintien du geste" 0. 1.5 0.05
+      mk 8 "Maintien du geste" 0. 1.5 0.05
         (fun () -> live.hold)
         (fun v -> live.hold <- v)
         sec;
-      mk 8 "Délai entre gestes" 0. 5. 0.1
+      mk 9 "Délai entre gestes" 0. 5. 0.1
         (fun () -> live.cooldown)
         (fun v -> live.cooldown <- v)
         sec;
-      mk 9 "Confiance min. (prédéfinis)" 0. 1. 0.01
+      mk 10 "Confiance min. (prédéfinis)" 0. 1. 0.01
         (fun () -> live.min_score)
         (fun v -> live.min_score <- v)
         pct;
-      mk 10 "Distance max. (personnels)" 0. 0.6 0.01
+      mk 11 "Distance max. (personnels)" 0. 0.6 0.01
         (fun () -> live.max_distance)
         (fun v -> live.max_distance <- v)
         pct;
@@ -271,8 +275,8 @@ let run (live : Live.t) ~config_path ~backgrounds (preview : Img.t) =
       draw_preview preview;
       rect (px - 8) 0 (pw + 16) wh c_panel;
       ignore (text ~c:c_dim (px + 10) 14 "DÉTOURAGE");
-      ignore (text ~c:c_dim (px + 10) (top 4 - section_gap + 14) "ABSENCE");
-      ignore (text ~c:c_dim (px + 10) (top 7 - section_gap + 14) "GESTES");
+      ignore (text ~c:c_dim (px + 10) (top 4 - section_gap + 14) "FOND");
+      ignore (text ~c:c_dim (px + 10) (top 8 - section_gap + 14) "GESTES");
       List.iter draw_slider sliders;
       List.iter draw_button buttons;
       let ty = vy + vh + 10 in
