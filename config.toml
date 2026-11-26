@@ -1,0 +1,63 @@
+# Configuration de bgcam. Chemin par défaut : ~/.config/bgcam/config.toml,
+# sinon passer --config FICHIER.
+
+[camera]
+device = "/dev/video0"
+width = 1280
+height = 720
+fps = 30
+
+[output]
+# Périphérique v4l2loopback (voir README pour sa création).
+device = "/dev/video10"
+
+[background]
+# Fond au démarrage : "blur", "none" (image brute) ou un nom de [backgrounds].
+default = "blur"
+# Force du flou (rayon en pixels, à la résolution de sortie).
+blur = 25
+
+[segmentation]
+# Un pixel entre dans la personne au-dessus de [enter] (probabilité du
+# modèle) et n'en sort qu'en dessous de [leave] : l'écart supprime le
+# clignotement. Monter les deux favorise le fond (la personne peut
+# disparaître un peu) ; les baisser favorise la personne.
+enter = 0.68
+leave = 0.41
+# Poids de la nouvelle trame (0 à 1) : plus bas = plus stable, plus de
+# traînée sur les mouvements.
+rate = 0.42
+
+# Fonds nommés : WebP animé (joué en boucle), WebP fixe, JPEG, ou vidéo
+# (WebM, MP4, MKV, MOV, GIF, lue en boucle par ffmpeg, depuis le début à
+# chaque sélection), ou scène : un dossier de clips. Dans une scène, les
+# clips sans tiret sont des états joués en boucle (le premier par ordre
+# alphabétique au départ), "a-b" la transition de a vers b ; redemander la
+# scène (même geste) passe à l'état suivant par sa transition.
+[backgrounds]
+vaisseau = "~/Images/backgrounds/vaisseau"
+warp = "~/Images/backgrounds/spaceship_4_warp.webm"
+# plage = "~/Vidéos/fonds/plage.webp"
+# bureau = "~/Images/bureau.jpg"
+
+[gestures]
+enabled = true
+# Durée (s) pendant laquelle le geste doit être tenu avant de déclencher.
+hold = 0.30
+# Délai (s) avant qu'un nouveau geste puisse déclencher.
+cooldown = 1.50
+# Confiance minimale du classifieur (0 à 1).
+min_score = 0.60
+# Gestes personnels (bgcam --record NOM) : distance maximale aux exemples
+# enregistrés (0 = identique, 1 = sans rapport). --debug-gestures affiche
+# la distance mesurée, utile pour ajuster.
+max_distance = 0.20
+
+# Geste -> action. Gestes reconnus : Open_Palm, Closed_Fist, Victory,
+# Thumb_Up, Thumb_Down, Pointing_Up, ILoveYou, plus les gestes personnels.
+# Actions : "blur", "none", "next", "prev", ou un nom de [backgrounds].
+[gestures.map]
+Victory = "none"
+Closed_Fist = "blur"
+engage = "vaisseau"
+# Thumb_Up = "plage"

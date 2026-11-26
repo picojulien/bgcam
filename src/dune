@@ -1,0 +1,13 @@
+(executable
+ (name main)
+ (public_name bgcam)
+ (libraries unix)
+ (ocamlopt_flags
+  (:standard -O3 -unsafe -inline 200))
+ (foreign_stubs
+  (language c)
+  (names stubs ui_stubs)
+  (flags
+   (:standard -O3 -Wall)))
+ (link_flags
+  (-cclib -ltensorflow-lite -cclib -ljpeg -cclib -lwebpdemux -cclib -lwebp -cclib -lSDL2 -cclib -lSDL2_ttf)))
