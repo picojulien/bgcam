@@ -2,8 +2,19 @@
    et publie le résultat sur une webcam virtuelle (v4l2loopback). Les gestes
    de la main changent le fond. *)
 
-let log fmt = Printf.ksprintf (fun s -> prerr_endline ("bgcam: " ^ s)) fmt
 let now = Unix.gettimeofday
+
+(* Messages horodatés (heure locale, à la milliseconde) : on peut relier un
+   geste détecté au moment où il a été fait. *)
+let log fmt =
+  Printf.ksprintf
+    (fun s ->
+      let t = now () in
+      let tm = Unix.localtime t in
+      Printf.eprintf "bgcam %02d:%02d:%02d.%03d: %s\n%!" tm.tm_hour tm.tm_min tm.tm_sec
+        (int_of_float ((t -. Float.of_int (truncate t)) *. 1000.))
+        s)
+    fmt
 
 (* ------------------------------------------------------------------------
    Fonds *)
