@@ -306,3 +306,23 @@ let copy (img : t) =
   let c = create img.w img.h in
   Array1.blit img.d c.d;
   c
+
+(* Multiplie la luminosité de [img] par [k] (0 à 1), sur place. *)
+let dim (img : t) k =
+  let k = max 0 (min 256 (int_of_float (k *. 256.))) in
+  for i = 0 to Array1.dim img.d - 1 do
+    set img.d i ((get img.d i * k) lsr 8)
+  done
+
+(* Comme [dim], sauf là où [keep] (un octet par pixel) est blanc : la
+   luminosité y est gardée, avec une transition selon le gris. *)
+let dim_masked (img : t) k (keep : Ffi.bytes8) =
+  let k = max 0 (min 256 (int_of_float (k *. 256.))) in
+  for p = 0 to (img.w * img.h) - 1 do
+    let m = get keep p in
+    let f = ((k * (255 - m)) + (256 * m)) / 255 in
+    let i = p * 3 in
+    set img.d i ((get img.d i * f) lsr 8);
+    set img.d (i + 1) ((get img.d (i + 1) * f) lsr 8);
+    set img.d (i + 2) ((get img.d (i + 2) * f) lsr 8)
+  done

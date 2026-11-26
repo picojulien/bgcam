@@ -19,6 +19,7 @@ type t = {
   mutable fired : string; (* dernier geste déclenché *)
   mutable current : string; (* fond affiché *)
   mutable fps : float;
+  mutable presence : float; (* part de l'image occupée par la personne *)
   (* demande de fond venue de la fenêtre, appliquée par la boucle vidéo *)
   request : string option Atomic.t;
 }
@@ -37,6 +38,7 @@ let of_config (c : Config.t) =
     fired = "";
     current = "";
     fps = 0.;
+    presence = 0.;
     request = Atomic.make None;
   }
 

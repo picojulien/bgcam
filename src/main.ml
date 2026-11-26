@@ -110,7 +110,8 @@ let start_video ?(loop = true) ?init path w h =
          Atomic.set v.ended true));
   v
 
-let stop_video v = try Unix.kill v.pid Sys.sigterm with Unix.Unix_error _ -> ()
+(* SIGKILL : ffmpeg ne tente pas de finir d'écrire dans un tuyau fermé. *)
+let stop_video v = try Unix.kill v.pid Sys.sigkill with Unix.Unix_error _ -> ()
 
 (* Copie de la trame courante. *)
 let snapshot v = Mutex.protect v.vm (fun () -> Img.copy v.front)
@@ -127,11 +128,24 @@ type scene = {
   mutable player : video option;
   mutable fade_from : Img.t option; (* fondu depuis cette image… *)
   mutable fade_t0 : float; (* …commencé à cet instant *)
+  keep : Ffi.bytes8 option;
+      (* masque.jpg : zones non tamisées en l'absence de personne *)
 }
 
 let fade_time = 0.6
 
-let load_scene dir =
+let load_scene dir w h =
+  let keep =
+    let path = Filename.concat dir "masque.jpg" in
+    if not (Sys.file_exists path) then None
+    else
+      let m = Img.cover (Img.load_jpeg path) w h in
+      let k = Ffi.bytes8 (w * h) in
+      for p = 0 to (w * h) - 1 do
+        Img.set k p (Img.get m.d (p * 3))
+      done;
+      Some k
+  in
   let clips =
     Sys.readdir dir |> Array.to_list
     |> List.filter (fun f ->
@@ -151,6 +165,7 @@ let load_scene dir =
     player = None;
     fade_from = None;
     fade_t0 = 0.;
+    keep;
   }
 
 let scene_play sc ?(loop = true) ?init ?(fade = false) clip w h =
@@ -223,7 +238,7 @@ let rec apply b action =
       | Some path when not (Hashtbl.mem b.loops name) ->
           let ext = String.lowercase_ascii (Filename.extension path) in
           Hashtbl.replace b.loops name
-            (if Sys.file_exists path && Sys.is_directory path then Scene (load_scene path)
+            (if Sys.file_exists path && Sys.is_directory path then Scene (load_scene path b.cfg.width b.cfg.height)
              else if List.mem ext video_exts then (
                if not (Sys.file_exists path) then failwith (path ^ " : fichier absent");
                Video (path, ref None))
@@ -478,6 +493,9 @@ let run ~config ~bg ~no_output ~input ~snapshot ~max_frames ~record ~ui =
   in
   let start = now () and n = ref 0 and shown = ref frame in
   let tick = ref (now ()) in
+  (* Absence : sans personne détectée pendant [absent_delay] s, le fond
+     (image, vidéo, scène) baisse jusqu'à [absent_brightness]. *)
+  let last_present = ref (now ()) and brightness = ref 1. and away = ref false in
   let report () =
     let dt = now () -. start in
     log "%d trames en %.1f s (%.1f i/s), fond %s" !n dt (float !n /. dt) bgs.current
@@ -536,6 +554,26 @@ let run ~config ~bg ~no_output ~input ~snapshot ~max_frames ~record ~ui =
                            Img.blur_update blur frame;
                            draw (Img.Small blur.small)));
                 result);
+         (let t = now () and dt = now () -. !tick in
+          live.presence <- seg.coverage;
+          if seg.coverage > 0.03 then last_present := t;
+          let absent = t -. !last_present > cfg.absent_delay in
+          if absent <> !away then (
+            away := absent;
+            log (if absent then "personne absente : fond tamisé" else "personne de retour"));
+          let target =
+            if absent && bgs.current <> "blur" && bgs.current <> "none" then
+              cfg.absent_brightness
+            else 1.
+          in
+          (* Descend en 1,5 s, remonte en 0,4 s. *)
+          brightness :=
+            if target < !brightness then Float.max target (!brightness -. (dt /. 1.5))
+            else Float.min target (!brightness +. (dt /. 0.4));
+          if !brightness < 0.999 && !shown == result then
+            match Hashtbl.find_opt bgs.loops bgs.current with
+            | Some (Scene { keep = Some keep; _ }) -> Img.dim_masked result !brightness keep
+            | _ -> Img.dim result !brightness);
          Option.iter (fun o -> Ffi.Out.write o !shown.d) out;
          Option.iter (fun (p : Img.t) -> Bigarray.Array1.blit !shown.d p.d) preview;
          let t = now () in

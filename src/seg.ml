@@ -20,6 +20,7 @@ type t = {
   inside : Bytes.t; (* état de chaque pixel, avec hystérésis *)
   smooth : float array; (* masque lissé dans le temps *)
   mutable primed : bool;
+  mutable coverage : float; (* part de l'image occupée par la personne *)
   live : Live.t;
 }
 
@@ -36,6 +37,7 @@ let create (live : Live.t) =
     inside = Bytes.make (size * size) '\000';
     smooth = Array.make (size * size) 0.;
     primed = false;
+    coverage = 0.;
     live;
   }
 
@@ -78,7 +80,10 @@ let mask t (frame : Img.t) =
     t.smooth.(i) <- m
   done;
   (* L'état étant tout ou rien, un dernier flou adoucit les bords. *)
+  let inside = ref 0 in
   box3 (Array.get t.smooth) (fun i m ->
+      if m > 0.5 then incr inside;
       Array1.unsafe_set t.mask i (int_of_float ((m *. 255.) +. 0.5)));
+  t.coverage <- float !inside /. float (size * size);
   t.primed <- true;
   t.mask

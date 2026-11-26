@@ -9,6 +9,8 @@ type t = {
   out_device : string;
   default_bg : string;
   blur : int;
+  absent_brightness : float; (* luminosité du fond quand personne n'est là *)
+  absent_delay : float;
   backgrounds : (string * string) list; (* nom, chemin, dans l'ordre du fichier *)
   gestures : bool;
   hold : float;
@@ -97,6 +99,8 @@ let load path =
     out_device = get "output" "device" str "/dev/video10";
     default_bg = get "background" "default" str "blur";
     blur = get "background" "blur" int_of_string 25;
+    absent_brightness = get "background" "absent_brightness" float_of_string 0.35;
+    absent_delay = get "background" "absent_delay" float_of_string 3.;
     backgrounds = List.map (fun (k, v) -> (k, expand_home v)) (section "backgrounds");
     gestures = get "gestures" "enabled" bool_of_string true;
     hold = get "gestures" "hold" float_of_string 0.5;

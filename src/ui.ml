@@ -264,7 +264,8 @@ let run (live : Live.t) ~config_path ~backgrounds (preview : Img.t) =
       let ty = vy + vh + 10 in
       ignore
         (text vx ty
-           (Printf.sprintf "Fond : %s    %.0f i/s" live.current live.fps));
+           (Printf.sprintf "Fond : %s    %.0f i/s    silhouette %.0f %%" live.current
+              live.fps (live.presence *. 100.)));
       ignore (text ~c:c_dim vx (ty + 22) ("Vu : " ^ live.seen));
       ignore (text ~c:c_dim vx (ty + 44) ("Dernier geste : " ^ live.fired));
       if Unix.gettimeofday () < !status_until then
