@@ -399,8 +399,11 @@ let watch_gestures (cfg : Config.t) (live : Live.t) hands w =
          live.fired <- Printf.sprintf "%s -> %s" name (Option.value action ~default:"(non associé)");
          if action <> None then Atomic.set w.action action
      | _ -> ());
-    (* Dix analyses par seconde suffisent et épargnent le processeur. *)
-    Unix.sleepf (Float.max 0. (0.1 -. (now () -. began)))
+    (* Dix analyses par seconde quand une main est visible, cinq sinon :
+       le détecteur de paume est le modèle le plus coûteux, et la main est
+       absente la plupart du temps. *)
+    let period = if desc = "pas de main" then 0.2 else 0.1 in
+    Unix.sleepf (Float.max 0. (period -. (now () -. began)))
   done
 
 let watch cfg live record w =

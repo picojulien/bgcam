@@ -4,6 +4,11 @@ open Bigarray
 
 type t = { w : int; h : int; d : Ffi.bytes8 }
 
+(* max et min sur les entiers : ceux de Stdlib sont polymorphes et passent
+   par une comparaison générique, coûteuse dans les boucles sur les pixels. *)
+let max (a : int) b = if a > b then a else b
+let min (a : int) b = if a < b then a else b
+
 let create w h = { w; h; d = Ffi.bytes8 (w * h * 3) }
 let get (d : Ffi.bytes8) i = Array1.unsafe_get d i
 let set (d : Ffi.bytes8) i v = Array1.unsafe_set d i v

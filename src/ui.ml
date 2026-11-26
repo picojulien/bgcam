@@ -12,6 +12,11 @@ external sdl_text : Ffi.bytes8 -> int * int -> int * int -> string -> int -> int
 external sdl_poll : unit -> int * int * int = "bgcam_ui_poll"
 external sdl_close : unit -> unit = "bgcam_ui_close"
 
+(* max et min sur les entiers : ceux de Stdlib sont polymorphes et passent
+   par une comparaison générique, coûteuse dans les boucles sur les pixels. *)
+let max (a : int) b = if a > b then a else b
+let min (a : int) b = if a < b then a else b
+
 let ww = 1110
 let wh = 782
 
@@ -35,14 +40,19 @@ let c_button = 0x3a3e4a
 
 let canvas = Ffi.bytes8 (ww * wh * 3)
 
+(* Accès directs aux octets (Img.get et Img.set ne sont pas inlinés entre
+   modules sans flambda). *)
+let get (d : Ffi.bytes8) i = Bigarray.Array1.unsafe_get d i
+let set (d : Ffi.bytes8) i v = Bigarray.Array1.unsafe_set d i v
+
 let rect x y w h c =
   let r = (c lsr 16) land 255 and g = (c lsr 8) land 255 and b = c land 255 in
   for yy = max 0 y to min (wh - 1) (y + h - 1) do
     for xx = max 0 x to min (ww - 1) (x + w - 1) do
       let i = ((yy * ww) + xx) * 3 in
-      Img.set canvas i r;
-      Img.set canvas (i + 1) g;
-      Img.set canvas (i + 2) b
+      set canvas i r;
+      set canvas (i + 1) g;
+      set canvas (i + 2) b
     done
   done
 
@@ -54,9 +64,9 @@ let draw_preview (p : Img.t) =
     let sy = y * p.h / vh in
     for x = 0 to vw - 1 do
       let s = ((sy * p.w) + (x * p.w / vw)) * 3 and d = (((vy + y) * ww) + vx + x) * 3 in
-      Img.set canvas d (Img.get p.d s);
-      Img.set canvas (d + 1) (Img.get p.d (s + 1));
-      Img.set canvas (d + 2) (Img.get p.d (s + 2))
+      set canvas d (get p.d s);
+      set canvas (d + 1) (get p.d (s + 1));
+      set canvas (d + 2) (get p.d (s + 2))
     done
   done
 

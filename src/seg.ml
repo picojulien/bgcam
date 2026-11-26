@@ -3,6 +3,11 @@
 open Bigarray
 open Ffi
 
+(* max et min sur les entiers : ceux de Stdlib sont polymorphes et passent
+   par une comparaison générique, coûteuse dans les boucles sur les pixels. *)
+let max (a : int) b = if a > b then a else b
+let min (a : int) b = if a < b then a else b
+
 let size = 256
 
 (* Seuils et lissage : voir [Live]. Un pixel entre dans la personne
@@ -25,7 +30,7 @@ type t = {
 }
 
 let create (live : Live.t) =
-  let model = Tflite.load (Models.segmenter ()) 2 in
+  let model = Tflite.load (Models.segmenter ()) 1 in
   let len = Tflite.output_len model 0 in
   {
     model;

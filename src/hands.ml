@@ -65,8 +65,8 @@ let create () =
     find 0
   in
   {
-    det = Tflite.load m.detector 2;
-    lm = Tflite.load m.landmarks 2;
+    det = Tflite.load m.detector 1;
+    lm = Tflite.load m.landmarks 1;
     emb;
     cls = Tflite.load m.classifier 1;
     anchors = make_anchors ();
