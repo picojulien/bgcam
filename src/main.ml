@@ -572,8 +572,9 @@ let run ~config ~bg ~no_output ~input ~snapshot ~max_frames ~record ~ui =
             else Float.min target (!brightness +. (dt /. 0.4));
           if !brightness < 0.999 && !shown == result then
             match Hashtbl.find_opt bgs.loops bgs.current with
-            | Some (Scene { keep = Some keep; _ }) -> Img.dim_masked result !brightness keep
-            | _ -> Img.dim result !brightness);
+            | Some (Scene { keep = Some keep; _ }) ->
+                Img.dim ~keep result !brightness ~highlights:live.absent_highlights
+            | _ -> Img.dim result !brightness ~highlights:live.absent_highlights);
          Option.iter (fun o -> Ffi.Out.write o !shown.d) out;
          Option.iter (fun (p : Img.t) -> Bigarray.Array1.blit !shown.d p.d) preview;
          let t = now () in

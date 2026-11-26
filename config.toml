@@ -21,6 +21,10 @@ blur = 25
 # (0 = noir, 1 = inchangé), puis revient dès le retour.
 absent_brightness = 0.35
 absent_delay = 3.0
+# Les zones claires baissent davantage : un pixel de luminance L (0 à 1)
+# est multiplié par absent_brightness^(1 + absent_highlights * L).
+# 0 = tamisage uniforme.
+absent_highlights = 1.0
 
 [segmentation]
 # Un pixel entre dans la personne au-dessus de [enter] (probabilité du

@@ -11,6 +11,7 @@ type t = {
   blur : int;
   absent_brightness : float; (* luminosité du fond quand personne n'est là *)
   absent_delay : float;
+  absent_highlights : float; (* atténuation supplémentaire des zones claires *)
   backgrounds : (string * string) list; (* nom, chemin, dans l'ordre du fichier *)
   gestures : bool;
   hold : float;
@@ -101,6 +102,7 @@ let load path =
     blur = get "background" "blur" int_of_string 25;
     absent_brightness = get "background" "absent_brightness" float_of_string 0.35;
     absent_delay = get "background" "absent_delay" float_of_string 3.;
+    absent_highlights = get "background" "absent_highlights" float_of_string 1.;
     backgrounds = List.map (fun (k, v) -> (k, expand_home v)) (section "backgrounds");
     gestures = get "gestures" "enabled" bool_of_string true;
     hold = get "gestures" "hold" float_of_string 0.5;

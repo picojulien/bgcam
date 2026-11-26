@@ -307,22 +307,27 @@ let copy (img : t) =
   Array1.blit img.d c.d;
   c
 
-(* Multiplie la luminosité de [img] par [k] (0 à 1), sur place. *)
-let dim (img : t) k =
-  let k = max 0 (min 256 (int_of_float (k *. 256.))) in
-  for i = 0 to Array1.dim img.d - 1 do
-    set img.d i ((get img.d i * k) lsr 8)
-  done
-
-(* Comme [dim], sauf là où [keep] (un octet par pixel) est blanc : la
-   luminosité y est gardée, avec une transition selon le gris. *)
-let dim_masked (img : t) k (keep : Ffi.bytes8) =
-  let k = max 0 (min 256 (int_of_float (k *. 256.))) in
+(* Assombrit [img] sur place : un pixel de luminance L (0 à 1) est
+   multiplié par k^(1 + highlights * L), donc les zones claires baissent plus
+   que les sombres. Là où [keep] (un octet par pixel) est blanc, la
+   luminosité est gardée, avec une transition selon le gris. *)
+let dim ?keep (img : t) k ~highlights =
+  let lut =
+    Array.init 256 (fun l ->
+        int_of_float ((k ** (1. +. (highlights *. float l /. 255.))) *. 256.))
+  in
   for p = 0 to (img.w * img.h) - 1 do
-    let m = get keep p in
-    let f = ((k * (255 - m)) + (256 * m)) / 255 in
     let i = p * 3 in
-    set img.d i ((get img.d i * f) lsr 8);
-    set img.d (i + 1) ((get img.d (i + 1) * f) lsr 8);
-    set img.d (i + 2) ((get img.d (i + 2) * f) lsr 8)
+    let r = get img.d i and g = get img.d (i + 1) and b = get img.d (i + 2) in
+    let f = lut.(((r * 77) + (g * 150) + (b * 29)) lsr 8) in
+    let f =
+      match keep with
+      | None -> f
+      | Some keep ->
+          let m = get keep p in
+          ((f * (255 - m)) + (256 * m)) / 255
+    in
+    set img.d i ((r * f) lsr 8);
+    set img.d (i + 1) ((g * f) lsr 8);
+    set img.d (i + 2) ((b * f) lsr 8)
   done
