@@ -443,14 +443,8 @@ let run ~config ~bg ~camera ~flip ~no_output ~input ~snapshot ~max_frames ~recor
   let cfg = Config.load config in
   let cfg = match camera with Some d -> { cfg with cam_device = d } | None -> cfg in
   let cfg = match flip with Some f -> { cfg with flip = f } | None -> cfg in
-  let flip_h, flip_v =
-    match cfg.flip with
-    | "none" -> (false, false)
-    | "horizontal" | "h" -> (true, false)
-    | "vertical" | "v" -> (false, true)
-    | "both" | "hv" -> (true, true)
-    | f -> failwith (Printf.sprintf "flip = %S : none, horizontal, vertical ou both" f)
-  in
+  if not (List.mem cfg.flip [ "none"; "horizontal"; "h"; "vertical"; "v"; "both"; "hv" ]) then
+    failwith (Printf.sprintf "flip = %S : none, horizontal, vertical ou both" cfg.flip);
   (* Source : webcam, ou image fixe pour les essais. *)
   let next_frame, (frame : Img.t) =
     match input with
@@ -658,8 +652,8 @@ let run ~config ~bg ~camera ~flip ~no_output ~input ~snapshot ~max_frames ~recor
                            draw (Img.Small blur.small)));
                 result);
          (* Retournement de l'image finale, fond compris. *)
-         if flip_h || flip_v then (
-           Img.flip !shown flipped ~h:flip_h ~v:flip_v;
+         if live.flip_h || live.flip_v then (
+           Img.flip !shown flipped ~h:live.flip_h ~v:live.flip_v;
            shown := flipped);
          Option.iter (fun o -> Ffi.Out.write o !shown.d) out;
          Option.iter (fun (p : Img.t) -> Bigarray.Array1.blit !shown.d p.d) preview;

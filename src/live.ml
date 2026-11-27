@@ -15,6 +15,9 @@ type t = {
   mutable absent_delay : float;
   mutable absent_warm : float;
   mutable match_light : float;
+  (* sortie *)
+  mutable flip_h : bool;
+  mutable flip_v : bool;
   (* gestes *)
   mutable hold : float;
   mutable cooldown : float;
@@ -41,6 +44,8 @@ let of_config (c : Config.t) =
     absent_delay = c.absent_delay;
     absent_warm = c.absent_warm;
     match_light = c.match_light;
+    flip_h = List.mem c.flip [ "horizontal"; "h"; "both"; "hv" ];
+    flip_v = List.mem c.flip [ "vertical"; "v"; "both"; "hv" ];
     hold = c.hold;
     cooldown = c.cooldown;
     min_score = c.min_score;
@@ -65,6 +70,14 @@ let to_config l =
     ("background", "absent_delay", Printf.sprintf "%.1f" l.absent_delay);
     ("background", "absent_warm", Printf.sprintf "%.2f" l.absent_warm);
     ("background", "match_light", Printf.sprintf "%.2f" l.match_light);
+    ( "output",
+      "flip",
+      Printf.sprintf "%S"
+        (match (l.flip_h, l.flip_v) with
+        | false, false -> "none"
+        | true, false -> "horizontal"
+        | false, true -> "vertical"
+        | true, true -> "both") );
     ("gestures", "hold", Printf.sprintf "%.2f" l.hold);
     ("gestures", "cooldown", Printf.sprintf "%.2f" l.cooldown);
     ("gestures", "min_score", Printf.sprintf "%.2f" l.min_score);

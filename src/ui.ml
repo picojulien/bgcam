@@ -241,6 +241,24 @@ let run (live : Live.t) ~config_path ~backgrounds (preview : Img.t) =
           on = (fun () -> false);
         };
         {
+          blabel = (fun () -> "Miroir ↔");
+          bx = vx + 302;
+          by = by + 44;
+          bw = 150;
+          bh = 34;
+          act = (fun () -> live.flip_h <- not live.flip_h);
+          on = (fun () -> live.flip_h);
+        };
+        {
+          blabel = (fun () -> "Haut / bas ↕");
+          bx = vx + 462;
+          by = by + 44;
+          bw = 150;
+          bh = 34;
+          act = (fun () -> live.flip_v <- not live.flip_v);
+          on = (fun () -> live.flip_v);
+        };
+        {
           blabel = (fun () -> "Enregistrer les réglages");
           bx = px;
           by = wh - 50;
