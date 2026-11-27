@@ -131,9 +131,9 @@ bgcam [--config FICHIER] [--bg NOM] [--camera DEV | --input FICHIER] [--ui] [--d
 - `--camera DEV` : webcam à lire (défaut : `/dev/video0`, ou `[camera] device`).
 - `--input FICHIER` : traite une vidéo (lue en boucle) ou une image JPEG à la
   place de la webcam.
-- `--flip SENS` : retourne l'image envoyée, fond compris : `horizontal`
-  (miroir), `vertical` (haut/bas) ou `both`. En config : `flip` dans
-  `[output]`.
+- `--flip SENS` : retourne le fond (image, vidéo, scène), pas la personne :
+  `horizontal` (miroir), `vertical` (haut/bas) ou `both`. En config : `flip`
+  dans `[background]`.
 - `--no-output`, `--frames N`, `--snapshot JPEG` : essais.
 
 Ctrl-C arrête bgcam proprement.
@@ -215,8 +215,8 @@ reconnaissance de gestes, des boutons pour choisir le fond (« refaire » passe
 la force du flou et les réglages des gestes. Les changements s'appliquent
 tout de suite ; « Enregistrer les réglages » les écrit dans le fichier de
 configuration en gardant ses commentaires. Fermer la fenêtre laisse bgcam
-tourner. Les boutons « Miroir ↔ » et « Haut / bas ↕ » retournent l'image envoyée,
-fond compris.
+tourner. Les boutons « Fond miroir ↔ » et « Fond haut/bas ↕ » retournent le
+fond, sans toucher à la personne.
 
 ## Organisation du code
 

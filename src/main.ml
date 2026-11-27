@@ -599,11 +599,18 @@ let run ~config ~bg ~camera ~flip ~no_output ~input ~snapshot ~max_frames ~recor
             une copie : ni la personne ni les zones du masque de la scène ne
             sont touchées. *)
          let full ?keep (img : Img.t) =
-           if !brightness > 0.999 && live.brightness > 0.999 then Img.Full img
-           else (
-             Bigarray.Array1.blit img.d dimmed.d;
-             Img.dim ?keep ~gain:live.brightness dimmed !brightness ~warm:live.absent_warm;
-             Img.Full dimmed)
+           let img =
+             if !brightness > 0.999 && live.brightness > 0.999 then img
+             else (
+               Bigarray.Array1.blit img.d dimmed.d;
+               Img.dim ?keep ~gain:live.brightness dimmed !brightness ~warm:live.absent_warm;
+               dimmed)
+           in
+           (* Fond retourné (pas la personne). *)
+           if live.flip_h || live.flip_v then (
+             Img.flip img flipped ~h:live.flip_h ~v:live.flip_v;
+             Img.Full flipped)
+           else Img.Full img
          in
          (shown :=
             match bgs.current with
@@ -651,10 +658,6 @@ let run ~config ~bg ~camera ~flip ~no_output ~input ~snapshot ~max_frames ~recor
                            Img.blur_update blur frame;
                            draw (Img.Small blur.small)));
                 result);
-         (* Retournement de l'image finale, fond compris. *)
-         if live.flip_h || live.flip_v then (
-           Img.flip !shown flipped ~h:live.flip_h ~v:live.flip_v;
-           shown := flipped);
          Option.iter (fun o -> Ffi.Out.write o !shown.d) out;
          Option.iter (fun (p : Img.t) -> Bigarray.Array1.blit !shown.d p.d) preview;
          let t = now () in
@@ -686,7 +689,7 @@ let () =
       ("--bg", opt bg, "NOM  fond de départ : blur, none, un nom configuré ou un chemin (image, vidéo, dossier de scène)");
       ("--no-output", Arg.Set no_output, " n'écrit pas sur la webcam virtuelle");
       ("--camera", opt camera, "DEV  webcam à lire (défaut : [camera] device, /dev/video0)");
-      ("--flip", opt flip, "SENS  retourne la sortie : none, horizontal (miroir), vertical (haut/bas) ou both");
+      ("--flip", opt flip, "SENS  retourne le fond (pas la personne) : none, horizontal (miroir), vertical (haut/bas) ou both");
       ("--input", opt input, "FICHIER  vidéo (lue en boucle) ou image JPEG traitée à la place de la webcam");
       ("--snapshot", opt snapshot, "JPEG  enregistre la dernière trame produite (essais)");
       ("--ui", Arg.Set ui, " ouvre la fenêtre de réglage (aperçu et réglages en direct)");

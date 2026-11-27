@@ -241,7 +241,7 @@ let run (live : Live.t) ~config_path ~backgrounds (preview : Img.t) =
           on = (fun () -> false);
         };
         {
-          blabel = (fun () -> "Miroir ↔");
+          blabel = (fun () -> "Fond miroir ↔");
           bx = vx + 302;
           by = by + 44;
           bw = 150;
@@ -250,7 +250,7 @@ let run (live : Live.t) ~config_path ~backgrounds (preview : Img.t) =
           on = (fun () -> live.flip_h);
         };
         {
-          blabel = (fun () -> "Haut / bas ↕");
+          blabel = (fun () -> "Fond haut/bas ↕");
           bx = vx + 462;
           by = by + 44;
           bw = 150;

@@ -15,7 +15,7 @@ type t = {
   mutable absent_delay : float;
   mutable absent_warm : float;
   mutable match_light : float;
-  (* sortie *)
+  (* retournement du fond *)
   mutable flip_h : bool;
   mutable flip_v : bool;
   (* gestes *)
@@ -70,7 +70,7 @@ let to_config l =
     ("background", "absent_delay", Printf.sprintf "%.1f" l.absent_delay);
     ("background", "absent_warm", Printf.sprintf "%.2f" l.absent_warm);
     ("background", "match_light", Printf.sprintf "%.2f" l.match_light);
-    ( "output",
+    ( "background",
       "flip",
       Printf.sprintf "%S"
         (match (l.flip_h, l.flip_v) with

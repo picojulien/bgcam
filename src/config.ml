@@ -7,7 +7,7 @@ type t = {
   height : int;
   fps : int;
   out_device : string;
-  flip : string; (* none, horizontal, vertical ou both *)
+  flip : string; (* retournement du fond : none, horizontal, vertical ou both *)
   default_bg : string;
   blur : int;
   brightness : float; (* luminosité du fond, personne présente *)
@@ -101,7 +101,7 @@ let load path =
     height = get "camera" "height" int_of_string 720;
     fps = get "camera" "fps" int_of_string 30;
     out_device = get "output" "device" str "/dev/video10";
-    flip = get "output" "flip" str "none";
+    flip = get "background" "flip" str (get "output" "flip" str "none");
     default_bg = get "background" "default" str "blur";
     blur = get "background" "blur" int_of_string 25;
     brightness = get "background" "brightness" float_of_string 1.;

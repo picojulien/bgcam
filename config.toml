@@ -10,9 +10,6 @@ fps = 30
 [output]
 # Périphérique v4l2loopback (voir README pour sa création).
 device = "/dev/video10"
-# Retournement de l'image envoyée, fond compris : none, horizontal
-# (miroir), vertical (haut/bas) ou both.
-flip = "none"
 
 [background]
 # Fond au démarrage : "blur", "none" (image brute) ou un nom de [backgrounds].
@@ -34,6 +31,9 @@ absent_warm = 2.0
 # Rapproche la luminosité de la personne de celle du fond (image, vidéo,
 # scène), et un peu sa teinte : 0 = rien, 1 = fort. Gain borné, lissé ~1 s.
 match_light = 0.5
+# Retournement du fond (image, vidéo, scène ; pas la personne) : none,
+# horizontal (miroir), vertical (haut/bas) ou both.
+flip = "none"
 
 [segmentation]
 # Un pixel entre dans la personne au-dessus de [enter] (probabilité du
