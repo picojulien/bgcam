@@ -439,11 +439,31 @@ let offer w (frame : Img.t) =
 (* ------------------------------------------------------------------------
    Boucle principale *)
 
-let run ~config ~bg ~no_output ~input ~snapshot ~max_frames ~record ~ui =
+let run ~config ~bg ~camera ~no_output ~input ~snapshot ~max_frames ~record ~ui =
   let cfg = Config.load config in
+  let cfg = match camera with Some d -> { cfg with cam_device = d } | None -> cfg in
   (* Source : webcam, ou image fixe pour les essais. *)
   let next_frame, (frame : Img.t) =
     match input with
+    | Some path when List.mem (String.lowercase_ascii (Filename.extension path)) video_exts ->
+        (* Vidéo lue en boucle par ffmpeg, à la place de la webcam. *)
+        if not (Sys.file_exists path) then failwith (path ^ " : fichier absent");
+        let v = start_video path cfg.width cfg.height in
+        while not (Atomic.get v.primed || Atomic.get v.ended) do
+          Unix.sleepf 0.01
+        done;
+        if not (Atomic.get v.primed) then failwith (path ^ " : vidéo illisible");
+        let img = Img.create cfg.width cfg.height in
+        (* Cadence de la config, temps de traitement compris. *)
+        let due = ref (Unix.gettimeofday ()) in
+        let next () =
+          due := Float.max (Unix.gettimeofday ()) (!due +. (1. /. float cfg.fps));
+          Unix.sleepf (Float.max 0. (!due -. Unix.gettimeofday ()));
+          Mutex.protect v.vm (fun () -> Bigarray.Array1.blit v.front.d img.d);
+          not (Atomic.get v.ended)
+        in
+        ignore (next ());
+        (next, img)
     | Some path ->
         let img = Img.cover (Img.load_jpeg path) cfg.width cfg.height in
         ((fun () -> Unix.sleepf (1. /. float cfg.fps); true), img)
@@ -617,6 +637,7 @@ let run ~config ~bg ~no_output ~input ~snapshot ~max_frames ~record ~ui =
 let () =
   let config = ref None and bg = ref None and no_output = ref false in
   let input = ref None and snapshot = ref None and max_frames = ref None in
+  let camera = ref None in
   let record = ref None and samples = ref 100 and ui = ref false in
   let opt r = Arg.String (fun s -> r := Some s) in
   let spec =
@@ -624,7 +645,8 @@ let () =
       ("--config", opt config, "FICHIER  configuration (défaut : " ^ Config.default_path ^ ")");
       ("--bg", opt bg, "NOM  fond de départ : blur, none, un nom configuré ou un chemin (image, vidéo, dossier de scène)");
       ("--no-output", Arg.Set no_output, " n'écrit pas sur la webcam virtuelle");
-      ("--input", opt input, "JPEG  image traitée à la place de la webcam (essais)");
+      ("--camera", opt camera, "DEV  webcam à lire (défaut : [camera] device, /dev/video0)");
+      ("--input", opt input, "FICHIER  vidéo (lue en boucle) ou image JPEG traitée à la place de la webcam");
       ("--snapshot", opt snapshot, "JPEG  enregistre la dernière trame produite (essais)");
       ("--ui", Arg.Set ui, " ouvre la fenêtre de réglage (aperçu et réglages en direct)");
       ("--debug-gestures", Arg.Set debug_gestures, " journalise ce que voit la reconnaissance de gestes");
@@ -637,7 +659,7 @@ let () =
     (fun a -> raise (Arg.Bad ("argument inattendu : " ^ a)))
     "bgcam [options]";
   try
-    run ~config:!config ~bg:!bg ~no_output:!no_output ~input:!input
+    run ~config:!config ~bg:!bg ~camera:!camera ~no_output:!no_output ~input:!input
       ~snapshot:!snapshot ~max_frames:!max_frames ~ui:!ui
       ~record:
         (Option.map

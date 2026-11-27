@@ -119,7 +119,7 @@ Dans Meet, choisir la caméra **bgcam**. Pour voir la sortie sans appel :
 ## Utilisation
 
 ```
-bgcam [--config FICHIER] [--bg NOM] [--ui] [--debug-gestures]
+bgcam [--config FICHIER] [--bg NOM] [--camera DEV | --input FICHIER] [--ui] [--debug-gestures]
 ```
 
 - `--bg NOM` : fond de départ (`blur`, `none`, un nom de `[backgrounds]`, ou
@@ -128,7 +128,10 @@ bgcam [--config FICHIER] [--bg NOM] [--ui] [--debug-gestures]
 - `--ui` : fenêtre de réglage (voir plus bas).
 - `--debug-gestures` : journalise ce que voit la reconnaissance de gestes.
 - `--record NOM` : enregistre un geste personnel (voir plus bas).
-- `--input JPEG`, `--no-output`, `--frames N`, `--snapshot JPEG` : essais.
+- `--camera DEV` : webcam à lire (défaut : `/dev/video0`, ou `[camera] device`).
+- `--input FICHIER` : traite une vidéo (lue en boucle) ou une image JPEG à la
+  place de la webcam.
+- `--no-output`, `--frames N`, `--snapshot JPEG` : essais.
 
 Ctrl-C arrête bgcam proprement.
 
