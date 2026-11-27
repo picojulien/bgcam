@@ -216,7 +216,8 @@ reconnaissance de gestes, des boutons pour choisir le fond (« refaire » passe
 à l'état suivant d'une scène) et des curseurs pour les seuils du détourage,
 la force du flou et les réglages des gestes. Les changements s'appliquent
 tout de suite ; « Enregistrer les réglages » les écrit dans le fichier de
-configuration en gardant ses commentaires. Fermer la fenêtre laisse bgcam
+configuration en gardant ses commentaires. La fenêtre se redimensionne (au minimum 1000×800) :
+l'aperçu grandit avec elle. Fermer la fenêtre laisse bgcam
 tourner. Les boutons « Fond miroir ↔ » et « Fond haut/bas ↕ » retournent le
 fond, sans toucher à la personne.
 

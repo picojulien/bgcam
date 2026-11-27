@@ -4,11 +4,13 @@
    tampon RGB, SDL ne sert qu'à l'afficher (ui_stubs.c). *)
 
 external sdl_open : string -> int -> int -> int -> unit = "bgcam_ui_open"
-external sdl_present : Ffi.bytes8 -> unit = "bgcam_ui_present"
+external sdl_min_size : int -> int -> unit = "bgcam_ui_min_size"
+external sdl_present : Ffi.bytes8 -> int -> int -> unit = "bgcam_ui_present"
 
 external sdl_text : Ffi.bytes8 -> int * int -> int * int -> string -> int -> int
   = "bgcam_ui_text"
 
+(* (genre, x, y) ; genre 7 : fenêtre redimensionnée en x * y. *)
 external sdl_poll : unit -> int * int * int = "bgcam_ui_poll"
 external sdl_close : unit -> unit = "bgcam_ui_close"
 
@@ -17,18 +19,21 @@ external sdl_close : unit -> unit = "bgcam_ui_close"
 let max (a : int) b = if a > b then a else b
 let min (a : int) b = if a < b then a else b
 
-let ww = 1110
-let wh = 830
+(* Taille de la fenêtre, et taille minimale (le panneau des curseurs a besoin
+   de 800 px de haut, la rangée de commandes sous l'aperçu de 650 px). *)
+let ww = ref 1110
+let wh = ref 830
+let min_w = 1000
+let min_h = 800
 
-(* Aperçu, en 16:9. *)
+(* Mise en page, recalculée à chaque redimensionnement (voir [relayout]) :
+   l'aperçu, en 16:9, occupe la place laissée à gauche du panneau. *)
 let vx = 12
 let vy = 12
-let vw = 768
-let vh = 432
-
-(* Panneau des curseurs. *)
-let px = vx + vw + 24
-let pw = ww - px - 16
+let vw = ref 768
+let vh = ref 432
+let pw = 290 (* largeur du panneau des curseurs *)
+let px = ref (!ww - pw - 16)
 
 let c_back = 0x1d1f24
 let c_panel = 0x2a2d35
@@ -38,7 +43,23 @@ let c_text = 0xe6e6e6
 let c_dim = 0x9aa0aa
 let c_button = 0x3a3e4a
 
-let canvas = Ffi.bytes8 (ww * wh * 3)
+let canvas = ref (Ffi.bytes8 (!ww * !wh * 3))
+
+(* Boutons de fond : 120 px de large, 128 de pas, sur plusieurs rangées si
+   la place manque. *)
+let left_w () = !px - 24 - vx
+let cols () = max 1 ((left_w () + 8) / 128)
+let rows n = (n + cols () - 1) / cols ()
+
+(* Place sous l'aperçu : état (3 lignes), rangées de fonds, rangée de commandes. *)
+let below n = 130 + (rows n * 44)
+
+let relayout n =
+  px := !ww - pw - 16;
+  let avail_h = !wh - vy - below n in
+  let w = max 160 (min (left_w ()) (avail_h * 16 / 9)) in
+  vw := w;
+  vh := w * 9 / 16
 
 (* Accès directs aux octets (Img.get et Img.set ne sont pas inlinés entre
    modules sans flambda). *)
@@ -46,6 +67,7 @@ let get (d : Ffi.bytes8) i = Bigarray.Array1.unsafe_get d i
 let set (d : Ffi.bytes8) i v = Bigarray.Array1.unsafe_set d i v
 
 let rect x y w h c =
+  let canvas = !canvas and ww = !ww and wh = !wh in
   let r = (c lsr 16) land 255 and g = (c lsr 8) land 255 and b = c land 255 in
   for yy = max 0 y to min (wh - 1) (y + h - 1) do
     for xx = max 0 x to min (ww - 1) (x + w - 1) do
@@ -56,14 +78,16 @@ let rect x y w h c =
     done
   done
 
-let text ?(c = c_text) x y s = sdl_text canvas (ww, wh) (x, y) s c
+let text ?(c = c_text) x y s = sdl_text !canvas (!ww, !wh) (x, y) s c
 
-(* Aperçu réduit au plus proche voisin. *)
+(* Aperçu mis à l'échelle au plus proche voisin. *)
 let draw_preview (p : Img.t) =
+  let canvas = !canvas and ww = !ww and vw = !vw and vh = !vh in
+  let xs = Array.init vw (fun x -> x * p.w / vw * 3) in
   for y = 0 to vh - 1 do
-    let sy = y * p.h / vh in
+    let row = y * p.h / vh * p.w * 3 and d0 = (((vy + y) * ww) + vx) * 3 in
     for x = 0 to vw - 1 do
-      let s = ((sy * p.w) + (x * p.w / vw)) * 3 and d = (((vy + y) * ww) + vx + x) * 3 in
+      let s = row + Array.unsafe_get xs x and d = d0 + (x * 3) in
       set canvas d (get p.d s);
       set canvas (d + 1) (get p.d (s + 1));
       set canvas (d + 2) (get p.d (s + 2))
@@ -84,17 +108,14 @@ type slider = {
   sy : int; (* haut de la commande *)
 }
 
-let track_x = px + 10
+let track_x () = !px + 10
 let track_w = pw - 20
 let slider_h = 46
 let track_dy = 30
 
 type button = {
   blabel : unit -> string;
-  bx : int;
-  by : int;
-  bw : int;
-  bh : int;
+  place : unit -> int * int * int * int; (* x, y, largeur, hauteur *)
   act : unit -> unit;
   on : unit -> bool; (* mis en évidence *)
 }
@@ -107,13 +128,14 @@ let set_slider s v =
 
 let slider_at sliders x y =
   List.find_opt
-    (fun s -> x >= px && x < px + pw && y >= s.sy && y < s.sy + slider_h)
+    (fun s -> x >= !px && x < !px + pw && y >= s.sy && y < s.sy + slider_h)
     sliders
 
 let value_at s x =
-  s.lo +. ((s.hi -. s.lo) *. clamp 0. 1. (float (x - track_x) /. float track_w))
+  s.lo +. ((s.hi -. s.lo) *. clamp 0. 1. (float (x - track_x ()) /. float track_w))
 
 let draw_slider s =
+  let px = !px and track_x = track_x () in
   let v = s.get () in
   ignore (text (px + 10) s.sy s.label);
   let vt = s.fmt v in
@@ -125,20 +147,26 @@ let draw_slider s =
   rect (track_x + k - 6) (ty - 6) 12 18 c_text
 
 let draw_button b =
-  rect b.bx b.by b.bw b.bh (if b.on () then c_accent else c_button);
+  let bx, by, bw, bh = b.place () in
+  rect bx by bw bh (if b.on () then c_accent else c_button);
   let label = b.blabel () in
-  ignore (text (b.bx + 10) (b.by + ((b.bh - 20) / 2)) label)
+  ignore (text (bx + 10) (by + ((bh - 20) / 2)) label)
 
 let button_at buttons x y =
   List.find_opt
-    (fun b -> x >= b.bx && x < b.bx + b.bw && y >= b.by && y < b.by + b.bh)
+    (fun b ->
+      let bx, by, bw, bh = b.place () in
+      x >= bx && x < bx + bw && y >= by && y < by + bh)
     buttons
 
 (* ------------------------------------------------------------------------
    Fenêtre *)
 
 let run (live : Live.t) ~config_path ~backgrounds (preview : Img.t) =
-  sdl_open "bgcam — réglages" ww wh 16;
+  sdl_open "bgcam — réglages" !ww !wh 16;
+  sdl_min_size min_w min_h;
+  let n_bg = List.length backgrounds in
+  relayout n_bg;
   let pct v = Printf.sprintf "%.2f" v and sec v = Printf.sprintf "%.2f s" v in
   let y0 = 44 in
   (* Sections : détourage (0-3), fond (4-8), gestes (9-12). *)
@@ -213,16 +241,15 @@ let run (live : Live.t) ~config_path ~backgrounds (preview : Img.t) =
      with Sys_error e -> status := "Échec : " ^ e);
     status_until := Unix.gettimeofday () +. 3.
   in
-  let by = vy + vh + 84 in
+  (* Rangées de boutons sous l'aperçu et l'état (3 lignes). *)
+  let bg_y () = vy + !vh + 84 in
+  let ctl_y () = bg_y () + (rows n_bg * 44) in
   let bg_buttons =
     List.mapi
       (fun i name ->
         {
           blabel = (fun () -> name);
-          bx = vx + (i * 128);
-          by;
-          bw = 120;
-          bh = 34;
+          place = (fun () -> (vx + (i mod cols () * 128), bg_y () + (i / cols () * 44), 120, 34));
           act = (fun () -> Atomic.set live.request (Some name));
           on = (fun () -> live.current = name);
         })
@@ -233,43 +260,31 @@ let run (live : Live.t) ~config_path ~backgrounds (preview : Img.t) =
     @ [
         {
           blabel = (fun () -> "Fond : refaire (état suivant)");
-          bx = vx;
-          by = by + 44;
-          bw = 290;
-          bh = 34;
+          place = (fun () -> (vx, ctl_y (), 290, 34));
           act = (fun () -> Atomic.set live.request (Some live.current));
           on = (fun () -> false);
         };
         {
           blabel = (fun () -> "Fond miroir ↔");
-          bx = vx + 302;
-          by = by + 44;
-          bw = 150;
-          bh = 34;
+          place = (fun () -> (vx + 302, ctl_y (), 150, 34));
           act = (fun () -> live.flip_h <- not live.flip_h);
           on = (fun () -> live.flip_h);
         };
         {
           blabel = (fun () -> "Fond haut/bas ↕");
-          bx = vx + 462;
-          by = by + 44;
-          bw = 150;
-          bh = 34;
+          place = (fun () -> (vx + 462, ctl_y (), 150, 34));
           act = (fun () -> live.flip_v <- not live.flip_v);
           on = (fun () -> live.flip_v);
         };
         {
           blabel = (fun () -> "Enregistrer les réglages");
-          bx = px;
-          by = wh - 50;
-          bw = pw;
-          bh = 36;
+          place = (fun () -> (!px, !wh - 50, pw, 36));
           act = save;
           on = (fun () -> false);
         };
       ]
   in
-  let dragging = ref None and pressed = ref None in
+  let dragging = ref None and pressed = ref None and resized = ref None in
   let running = ref true in
   while !running do
     let began = Unix.gettimeofday () in
@@ -299,19 +314,32 @@ let run (live : Live.t) ~config_path ~backgrounds (preview : Img.t) =
             (fun s -> set_slider s (s.get () +. if k = 5 then s.step else -.s.step))
             (slider_at sliders x y);
           events ()
+      | 7, w, h ->
+          resized := Some (w, h);
+          events ()
       | _ -> events ()
     in
     events ();
+    (* Nouvelle taille : le tampon de dessin et la mise en page suivent. *)
+    (match !resized with
+    | Some (w, h) when w > 0 && h > 0 && (w <> !ww || h <> !wh) ->
+        ww := w;
+        wh := h;
+        canvas := Ffi.bytes8 (w * h * 3);
+        relayout n_bg
+    | _ -> ());
+    resized := None;
     if !running then begin
-      rect 0 0 ww wh c_back;
+      let px = !px in
+      rect 0 0 !ww !wh c_back;
       draw_preview preview;
-      rect (px - 8) 0 (pw + 16) wh c_panel;
+      rect (px - 8) 0 (pw + 16) !wh c_panel;
       ignore (text ~c:c_dim (px + 10) 14 "DÉTOURAGE");
       ignore (text ~c:c_dim (px + 10) (top 4 - section_gap + 14) "FOND");
       ignore (text ~c:c_dim (px + 10) (top 9 - section_gap + 14) "GESTES");
       List.iter draw_slider sliders;
       List.iter draw_button buttons;
-      let ty = vy + vh + 10 in
+      let ty = vy + !vh + 10 in
       ignore
         (text vx ty
            (Printf.sprintf "Fond : %s    %.0f i/s    silhouette %.0f %%" live.current
@@ -319,8 +347,8 @@ let run (live : Live.t) ~config_path ~backgrounds (preview : Img.t) =
       ignore (text ~c:c_dim vx (ty + 22) ("Vu : " ^ live.seen));
       ignore (text ~c:c_dim vx (ty + 44) ("Dernier geste : " ^ live.fired));
       if Unix.gettimeofday () < !status_until then
-        ignore (text ~c:c_accent px (wh - 76) !status);
-      sdl_present canvas;
+        ignore (text ~c:c_accent px (!wh - 76) !status);
+      sdl_present !canvas !ww !wh;
 
       Unix.sleepf (Float.max 0. ((1. /. 30.) -. (Unix.gettimeofday () -. began)))
     end

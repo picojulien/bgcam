@@ -38,7 +38,8 @@ value bgcam_ui_open(value title, value w, value h, value size) {
   if (!font)
     caml_failwith("aucune police trouvée (DejaVu ou Liberation)");
   win = SDL_CreateWindow(String_val(title), SDL_WINDOWPOS_CENTERED,
-                         SDL_WINDOWPOS_CENTERED, win_w, win_h, 0);
+                         SDL_WINDOWPOS_CENTERED, win_w, win_h,
+                         SDL_WINDOW_RESIZABLE);
   if (!win)
     caml_failwith(SDL_GetError());
   ren = SDL_CreateRenderer(win, -1, 0);
@@ -51,10 +52,27 @@ value bgcam_ui_open(value title, value w, value h, value size) {
   CAMLreturn(Val_unit);
 }
 
-/* Affiche le tampon RGB de la taille de la fenêtre. */
-value bgcam_ui_present(value buf) {
-  CAMLparam1(buf);
+value bgcam_ui_min_size(value w, value h) {
+  SDL_SetWindowMinimumSize(win, Int_val(w), Int_val(h));
+  return Val_unit;
+}
+
+/* Affiche le tampon RGB de [w] x [h] ; la texture suit sa taille quand la
+   fenêtre est redimensionnée. */
+value bgcam_ui_present(value buf, value w, value h) {
+  CAMLparam3(buf, w, h);
   void *p = Caml_ba_data_val(buf);
+  if (Int_val(w) != win_w || Int_val(h) != win_h) {
+    SDL_Texture *t =
+        SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGB24,
+                          SDL_TEXTUREACCESS_STREAMING, Int_val(w), Int_val(h));
+    if (t) {
+      SDL_DestroyTexture(tex);
+      tex = t;
+      win_w = Int_val(w);
+      win_h = Int_val(h);
+    }
+  }
   caml_release_runtime_system();
   SDL_UpdateTexture(tex, NULL, p, win_w * 3);
   SDL_RenderCopy(ren, tex, NULL, NULL);
@@ -107,7 +125,7 @@ value bgcam_ui_text(value buf, value dims, value pos, value s, value rgb) {
 
 /* Prochain événement : (genre, x, y). Genre : 0 aucun, 1 fermeture,
    2 bouton enfoncé, 3 bouton relâché, 4 mouvement, 5 molette vers le haut,
-   6 molette vers le bas. */
+   6 molette vers le bas, 7 fenêtre redimensionnée (x, y = nouvelle taille). */
 value bgcam_ui_poll(value unit) {
   CAMLparam1(unit);
   CAMLlocal1(r);
@@ -128,6 +146,10 @@ value bgcam_ui_poll(value unit) {
       break;
     case SDL_MOUSEMOTION:
       kind = 4, x = e.motion.x, y = e.motion.y;
+      break;
+    case SDL_WINDOWEVENT:
+      if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
+        kind = 7, x = e.window.data1, y = e.window.data2;
       break;
     case SDL_MOUSEWHEEL:
       if (e.wheel.y != 0) {
