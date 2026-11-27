@@ -378,7 +378,7 @@ static int xioctl(int fd, unsigned long req, void *arg) {
 CAMLprim value bgcam_cam_open(value dev, value w, value h, value fps) {
   CAMLparam4(dev, w, h, fps);
   CAMLlocal1(res);
-  int fd = open(String_val(dev), O_RDWR);
+  int fd = open(String_val(dev), O_RDWR | O_CLOEXEC);
   if (fd < 0) failf(String_val(dev), strerror(errno));
 
   struct v4l2_format f = {.type = V4L2_BUF_TYPE_VIDEO_CAPTURE};
@@ -496,7 +496,7 @@ struct out {
 
 CAMLprim value bgcam_out_open(value dev, value w, value h, value fps) {
   CAMLparam4(dev, w, h, fps);
-  int fd = open(String_val(dev), O_RDWR);
+  int fd = open(String_val(dev), O_RDWR | O_CLOEXEC);
   if (fd < 0) failf(String_val(dev), strerror(errno));
   struct out *o = calloc(1, sizeof *o);
   o->fd = fd;
