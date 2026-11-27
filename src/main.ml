@@ -439,9 +439,18 @@ let offer w (frame : Img.t) =
 (* ------------------------------------------------------------------------
    Boucle principale *)
 
-let run ~config ~bg ~camera ~no_output ~input ~snapshot ~max_frames ~record ~ui =
+let run ~config ~bg ~camera ~flip ~no_output ~input ~snapshot ~max_frames ~record ~ui =
   let cfg = Config.load config in
   let cfg = match camera with Some d -> { cfg with cam_device = d } | None -> cfg in
+  let cfg = match flip with Some f -> { cfg with flip = f } | None -> cfg in
+  let flip_h, flip_v =
+    match cfg.flip with
+    | "none" -> (false, false)
+    | "horizontal" | "h" -> (true, false)
+    | "vertical" | "v" -> (false, true)
+    | "both" | "hv" -> (true, true)
+    | f -> failwith (Printf.sprintf "flip = %S : none, horizontal, vertical ou both" f)
+  in
   (* Source : webcam, ou image fixe pour les essais. *)
   let next_frame, (frame : Img.t) =
     match input with
@@ -498,6 +507,7 @@ let run ~config ~bg ~camera ~no_output ~input ~snapshot ~max_frames ~record ~ui 
   let fading = Img.create w h and dimmed = Img.create w h in
   (* Personne accordée au fond : gains par canal, lissés dans le temps. *)
   let lit = Img.create w h and light = ref (1., 1., 1.) in
+  let flipped = Img.create w h in
   let match_light (bg : Img.t) mask =
     let pr, pg, pb, pw = Img.masked_mean frame mask Seg.size ~inv:false in
     let br, bgr, bb, bw = Img.masked_mean bg mask Seg.size ~inv:true in
@@ -647,6 +657,10 @@ let run ~config ~bg ~camera ~no_output ~input ~snapshot ~max_frames ~record ~ui 
                            Img.blur_update blur frame;
                            draw (Img.Small blur.small)));
                 result);
+         (* Retournement de l'image finale, fond compris. *)
+         if flip_h || flip_v then (
+           Img.flip !shown flipped ~h:flip_h ~v:flip_v;
+           shown := flipped);
          Option.iter (fun o -> Ffi.Out.write o !shown.d) out;
          Option.iter (fun (p : Img.t) -> Bigarray.Array1.blit !shown.d p.d) preview;
          let t = now () in
@@ -669,7 +683,7 @@ let run ~config ~bg ~camera ~no_output ~input ~snapshot ~max_frames ~record ~ui 
 let () =
   let config = ref None and bg = ref None and no_output = ref false in
   let input = ref None and snapshot = ref None and max_frames = ref None in
-  let camera = ref None in
+  let camera = ref None and flip = ref None in
   let record = ref None and samples = ref 100 and ui = ref false in
   let opt r = Arg.String (fun s -> r := Some s) in
   let spec =
@@ -678,6 +692,7 @@ let () =
       ("--bg", opt bg, "NOM  fond de départ : blur, none, un nom configuré ou un chemin (image, vidéo, dossier de scène)");
       ("--no-output", Arg.Set no_output, " n'écrit pas sur la webcam virtuelle");
       ("--camera", opt camera, "DEV  webcam à lire (défaut : [camera] device, /dev/video0)");
+      ("--flip", opt flip, "SENS  retourne la sortie : none, horizontal (miroir), vertical (haut/bas) ou both");
       ("--input", opt input, "FICHIER  vidéo (lue en boucle) ou image JPEG traitée à la place de la webcam");
       ("--snapshot", opt snapshot, "JPEG  enregistre la dernière trame produite (essais)");
       ("--ui", Arg.Set ui, " ouvre la fenêtre de réglage (aperçu et réglages en direct)");
@@ -691,7 +706,7 @@ let () =
     (fun a -> raise (Arg.Bad ("argument inattendu : " ^ a)))
     "bgcam [options]";
   try
-    run ~config:!config ~bg:!bg ~camera:!camera ~no_output:!no_output ~input:!input
+    run ~config:!config ~bg:!bg ~camera:!camera ~flip:!flip ~no_output:!no_output ~input:!input
       ~snapshot:!snapshot ~max_frames:!max_frames ~ui:!ui
       ~record:
         (Option.map

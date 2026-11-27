@@ -370,3 +370,22 @@ let gains (src : t) (dst : t) (gr, gg, gb) =
     set d (i + 1) (Array.unsafe_get lg (get s (i + 1)));
     set d (i + 2) (Array.unsafe_get lb (get s (i + 2)))
   done
+
+(* [dst] = [src] retourné : miroir gauche/droite si [h], haut/bas si [v]. *)
+let flip (src : t) (dst : t) ~h ~v =
+  let w = src.w and ht = src.h in
+  let s = src.d and d = dst.d in
+  for y = 0 to ht - 1 do
+    let sy = if v then ht - 1 - y else y in
+    if h then
+      for x = 0 to w - 1 do
+        let i = ((sy * w) + (w - 1 - x)) * 3 and o = ((y * w) + x) * 3 in
+        set d o (get s i);
+        set d (o + 1) (get s (i + 1));
+        set d (o + 2) (get s (i + 2))
+      done
+    else
+      Bigarray.Array1.blit
+        (Bigarray.Array1.sub s (sy * w * 3) (w * 3))
+        (Bigarray.Array1.sub d (y * w * 3) (w * 3))
+  done

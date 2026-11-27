@@ -131,6 +131,9 @@ bgcam [--config FICHIER] [--bg NOM] [--camera DEV | --input FICHIER] [--ui] [--d
 - `--camera DEV` : webcam à lire (défaut : `/dev/video0`, ou `[camera] device`).
 - `--input FICHIER` : traite une vidéo (lue en boucle) ou une image JPEG à la
   place de la webcam.
+- `--flip SENS` : retourne l'image envoyée, fond compris : `horizontal`
+  (miroir), `vertical` (haut/bas) ou `both`. En config : `flip` dans
+  `[output]`.
 - `--no-output`, `--frames N`, `--snapshot JPEG` : essais.
 
 Ctrl-C arrête bgcam proprement.
