@@ -457,6 +457,16 @@ let run ~config ~bg ~no_output ~input ~snapshot ~max_frames ~record ~ui =
   let cfg = { cfg with width = frame.w; height = frame.h } in
   let w = cfg.width and h = cfg.height in
 
+  (* --bg accepte aussi un chemin (image, vidéo, dossier de scène) : il est
+     ajouté aux fonds sous son nom de fichier, gestes next/prev compris. *)
+  let cfg, bg =
+    match bg with
+    | Some p when (not (List.mem_assoc p cfg.backgrounds)) && Sys.file_exists p ->
+        let base = Filename.remove_extension (Filename.basename p) in
+        let name = if List.mem_assoc base cfg.backgrounds then p else base in
+        ({ cfg with backgrounds = cfg.backgrounds @ [ (name, p) ] }, Some name)
+    | _ -> (cfg, bg)
+  in
   let bgs = backgrounds cfg in
   Option.iter (apply bgs) bg;
   let live = Live.of_config cfg in
@@ -612,7 +622,7 @@ let () =
   let spec =
     [
       ("--config", opt config, "FICHIER  configuration (défaut : " ^ Config.default_path ^ ")");
-      ("--bg", opt bg, "NOM  fond de départ : blur, none ou un nom configuré");
+      ("--bg", opt bg, "NOM  fond de départ : blur, none, un nom configuré ou un chemin (image, vidéo, dossier de scène)");
       ("--no-output", Arg.Set no_output, " n'écrit pas sur la webcam virtuelle");
       ("--input", opt input, "JPEG  image traitée à la place de la webcam (essais)");
       ("--snapshot", opt snapshot, "JPEG  enregistre la dernière trame produite (essais)");

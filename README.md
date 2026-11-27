@@ -122,7 +122,9 @@ Dans Meet, choisir la caméra **bgcam**. Pour voir la sortie sans appel :
 bgcam [--config FICHIER] [--bg NOM] [--ui] [--debug-gestures]
 ```
 
-- `--bg NOM` : fond de départ (`blur`, `none` ou un nom de `[backgrounds]`).
+- `--bg NOM` : fond de départ (`blur`, `none`, un nom de `[backgrounds]`, ou
+  directement un chemin : image, vidéo ou dossier de scène, par exemple
+  `--bg ~/Videos/plage.webm`).
 - `--ui` : fenêtre de réglage (voir plus bas).
 - `--debug-gestures` : journalise ce que voit la reconnaissance de gestes.
 - `--record NOM` : enregistre un geste personnel (voir plus bas).
