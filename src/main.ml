@@ -223,6 +223,7 @@ type backgrounds = {
   loops : (string, source) Hashtbl.t;
   mutable current : string;
   mutable since : float;
+  mutable last_scene : string option; (* dernière scène affichée *)
 }
 
 let rec apply b action =
@@ -254,6 +255,9 @@ let rec apply b action =
             r := None
         | Some (Scene sc) -> scene_stop sc
         | _ -> ());
+        (match Hashtbl.find_opt b.loops name with
+        | Some (Scene _) -> b.last_scene <- Some name
+        | _ -> ());
         match Hashtbl.find_opt b.loops name with
         | Some (Video (path, r)) when !r = None ->
             r := Some (start_video path b.cfg.width b.cfg.height)
@@ -267,20 +271,25 @@ let rec apply b action =
 
 (* Action d'un geste. Un geste lié à une scène, fait pendant qu'une autre
    scène est affichée (deux variantes d'un même décor, par exemple), fait
-   avancer la scène affichée au lieu d'en changer. *)
+   avancer la scène affichée au lieu d'en changer ; depuis un fond qui n'est
+   pas une scène, il ramène la dernière scène affichée. *)
 let gesture_apply b action =
   let is_scene name =
     match List.assoc_opt name b.cfg.backgrounds with
     | Some p -> Sys.file_exists p && Sys.is_directory p
     | None -> false
   in
-  if action <> b.current && is_scene action && is_scene b.current then apply b b.current
+  if action <> b.current && is_scene action then
+    if is_scene b.current then apply b b.current
+    else
+      (* Depuis le flou ou l'image brute : retour à la dernière scène vue. *)
+      apply b (match b.last_scene with Some s when is_scene s -> s | _ -> action)
   else apply b action
 
 let backgrounds (cfg : Config.t) =
   let order = ("blur" :: List.map fst cfg.backgrounds) @ [ "none" ] in
   let b =
-    { cfg; order; loops = Hashtbl.create 8; current = "blur"; since = now () }
+    { cfg; order; loops = Hashtbl.create 8; current = "blur"; since = now (); last_scene = None }
   in
   apply b cfg.default_bg;
   b
