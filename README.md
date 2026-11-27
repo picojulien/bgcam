@@ -215,7 +215,8 @@ reconnaissance de gestes, des boutons pour choisir le fond (« refaire » passe
 la force du flou et les réglages des gestes. Les changements s'appliquent
 tout de suite ; « Enregistrer les réglages » les écrit dans le fichier de
 configuration en gardant ses commentaires. Fermer la fenêtre laisse bgcam
-tourner.
+tourner. Les boutons « Miroir ↔ » et « Haut / bas ↕ » retournent l'image envoyée,
+fond compris.
 
 ## Organisation du code
 
