@@ -166,6 +166,12 @@ la personne, sans toucher à la personne. Quand personne n'est détecté devant 
 secondes, le fond (image, vidéo ou scène) baisse jusqu'à
 `absent_brightness`, puis revient dès le retour.
 
+`match_light` (0 à 1, défaut 0,5) rapproche la luminosité de la personne de
+celle du fond visible autour d'elle, et très légèrement sa teinte, pour
+qu'elle semble éclairée par la scène. Le gain est borné (de 0,6 à 1,25 pour
+la luminosité, ±10 % pour la teinte) et lissé sur une seconde environ. Pas
+d'effet avec le flou ni l'image brute.
+
 ## Gestes
 
 Gestes prédéfinis : `Open_Palm`, `Closed_Fist`, `Victory`, `Thumb_Up`,

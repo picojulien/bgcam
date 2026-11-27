@@ -496,6 +496,28 @@ let run ~config ~bg ~camera ~no_output ~input ~snapshot ~max_frames ~record ~ui 
   let comp = Img.compositor (Img.Pool.create 4) ~w ~h ~mw:Seg.size ~mh:Seg.size in
   let result = Img.create w h in
   let fading = Img.create w h and dimmed = Img.create w h in
+  (* Personne accordée au fond : gains par canal, lissés dans le temps. *)
+  let lit = Img.create w h and light = ref (1., 1., 1.) in
+  let match_light (bg : Img.t) mask =
+    let pr, pg, pb, pw = Img.masked_mean frame mask Seg.size ~inv:false in
+    let br, bgr, bb, bw = Img.masked_mean bg mask Seg.size ~inv:true in
+    if pw < 64 * 64 * 255 / 50 || bw < 64 * 64 * 255 / 50 then None
+    else
+      let k = live.match_light in
+      let luma r g b = Float.max 8. ((0.299 *. r) +. (0.587 *. g) +. (0.114 *. b)) in
+      let yp = luma pr pg pb and yb = luma br bgr bb in
+      (* Surtout la luminosité, bornée ; la teinte à peine (10 % au plus). *)
+      let l = Float.min 1.25 (Float.max 0.6 ((yb /. yp) ** k)) in
+      let tint p b =
+        let c = (Float.max 4. b /. yb) /. (Float.max 4. p /. yp) in
+        l *. Float.min 1.1 (Float.max 0.9 (c ** (0.4 *. k)))
+      in
+      let tr = tint pr br and tg = tint pg bgr and tb = tint pb bb in
+      let r, g, b = !light and a = 0.05 in
+      light := (r +. (a *. (tr -. r)), g +. (a *. (tg -. g)), b +. (a *. (tb -. b)));
+      Img.gains frame lit !light;
+      Some lit
+  in
   let watcher =
     if record <> None || (cfg.gestures && cfg.gesture_map <> []) then
       Some (start_watcher cfg live record w h)
@@ -584,7 +606,17 @@ let run ~config ~bg ~camera ~no_output ~input ~snapshot ~max_frames ~record ~ui 
             | "none" -> frame
             | name ->
                 let mask = Seg.mask seg frame in
-                let draw bg = Img.composite comp ~fg:frame ~bg ~mask ~dst:result in
+                let draw bg =
+                  let fg =
+                    match bg with
+                    | Img.Full b when live.match_light > 0.01 -> (
+                        match match_light b mask with Some l -> l | None -> frame)
+                    | _ ->
+                        light := (1., 1., 1.);
+                        frame
+                  in
+                  Img.composite comp ~fg ~bg ~mask ~dst:result
+                in
                 (if name = "blur" then (
                    Img.blur_update blur frame;
                    draw (Img.Small blur.small))

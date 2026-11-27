@@ -28,6 +28,9 @@ absent_delay = 3.0
 # chaleur C = (rouge - bleu) / 255 est multiplié par
 # absent_brightness^(1 + absent_warm * C). 0 = tamisage uniforme.
 absent_warm = 2.0
+# Rapproche la luminosité de la personne de celle du fond (image, vidéo,
+# scène), et un peu sa teinte : 0 = rien, 1 = fort. Gain borné, lissé ~1 s.
+match_light = 0.5
 
 [segmentation]
 # Un pixel entre dans la personne au-dessus de [enter] (probabilité du

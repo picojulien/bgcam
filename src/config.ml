@@ -13,6 +13,7 @@ type t = {
   absent_brightness : float; (* luminosité du fond quand personne n'est là *)
   absent_delay : float;
   absent_warm : float; (* atténuation supplémentaire des couleurs chaudes *)
+  match_light : float; (* rapprochement des couleurs de la personne de celles du fond *)
   backgrounds : (string * string) list; (* nom, chemin, dans l'ordre du fichier *)
   gestures : bool;
   hold : float;
@@ -105,6 +106,7 @@ let load path =
     absent_brightness = get "background" "absent_brightness" float_of_string 0.35;
     absent_delay = get "background" "absent_delay" float_of_string 3.;
     absent_warm = get "background" "absent_warm" float_of_string 2.;
+    match_light = get "background" "match_light" float_of_string 0.5;
     backgrounds = List.map (fun (k, v) -> (k, expand_home v)) (section "backgrounds");
     gestures = get "gestures" "enabled" bool_of_string true;
     hold = get "gestures" "hold" float_of_string 0.5;

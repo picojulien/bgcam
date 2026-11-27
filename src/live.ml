@@ -14,6 +14,7 @@ type t = {
   mutable absent_brightness : float;
   mutable absent_delay : float;
   mutable absent_warm : float;
+  mutable match_light : float;
   (* gestes *)
   mutable hold : float;
   mutable cooldown : float;
@@ -39,6 +40,7 @@ let of_config (c : Config.t) =
     absent_brightness = c.absent_brightness;
     absent_delay = c.absent_delay;
     absent_warm = c.absent_warm;
+    match_light = c.match_light;
     hold = c.hold;
     cooldown = c.cooldown;
     min_score = c.min_score;
@@ -62,6 +64,7 @@ let to_config l =
     ("background", "absent_brightness", Printf.sprintf "%.2f" l.absent_brightness);
     ("background", "absent_delay", Printf.sprintf "%.1f" l.absent_delay);
     ("background", "absent_warm", Printf.sprintf "%.2f" l.absent_warm);
+    ("background", "match_light", Printf.sprintf "%.2f" l.match_light);
     ("gestures", "hold", Printf.sprintf "%.2f" l.hold);
     ("gestures", "cooldown", Printf.sprintf "%.2f" l.cooldown);
     ("gestures", "min_score", Printf.sprintf "%.2f" l.min_score);

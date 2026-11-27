@@ -336,3 +336,37 @@ let dim ?keep ?(gain = 1.) (img : t) k ~warm =
     set img.d (i + 1) ((g * f) lsr 8);
     set img.d (i + 2) ((b * f) lsr 8)
   done
+
+(* Couleur moyenne de [img] échantillonnée sur une grille de 64x64 points,
+   pondérée par le masque [mask] (msize x msize) : la personne (poids m), ou
+   le fond si [inv] (poids 255 - m). Renvoie (r, v, b, poids total). *)
+let masked_mean (img : t) (mask : Ffi.bytes8) msize ~inv =
+  let n = 64 in
+  let r = ref 0 and g = ref 0 and b = ref 0 and wt = ref 0 in
+  for j = 0 to n - 1 do
+    let my = ((2 * j) + 1) * msize / (2 * n) and iy = ((2 * j) + 1) * img.h / (2 * n) in
+    for k = 0 to n - 1 do
+      let mx = ((2 * k) + 1) * msize / (2 * n) and ix = ((2 * k) + 1) * img.w / (2 * n) in
+      let m = get mask ((my * msize) + mx) in
+      let m = if inv then 255 - m else m in
+      let i = ((iy * img.w) + ix) * 3 in
+      r := !r + (m * get img.d i);
+      g := !g + (m * get img.d (i + 1));
+      b := !b + (m * get img.d (i + 2));
+      wt := !wt + m
+    done
+  done;
+  let f = float (max 1 !wt) in
+  (float !r /. f, float !g /. f, float !b /. f, !wt)
+
+(* [dst] = [src] multiplié canal par canal par (gr, gg, gb). *)
+let gains (src : t) (dst : t) (gr, gg, gb) =
+  let lut gn = Array.init 256 (fun c -> min 255 (int_of_float ((float c *. gn) +. 0.5))) in
+  let lr = lut gr and lg = lut gg and lb = lut gb in
+  let s = src.d and d = dst.d in
+  for p = 0 to (src.w * src.h) - 1 do
+    let i = p * 3 in
+    set d i (Array.unsafe_get lr (get s i));
+    set d (i + 1) (Array.unsafe_get lg (get s (i + 1)));
+    set d (i + 2) (Array.unsafe_get lb (get s (i + 2)))
+  done
