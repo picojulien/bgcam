@@ -10,7 +10,7 @@ fps = 30
 [output]
 # Périphérique v4l2loopback (voir README pour sa création).
 device = "/dev/video10"
-# Retournement de l\'image envoyée, fond compris : none, horizontal
+# Retournement de l'image envoyée, fond compris : none, horizontal
 # (miroir), vertical (haut/bas) ou both.
 flip = "none"
 
