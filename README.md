@@ -156,7 +156,8 @@ vaisseau/
 
 Le geste associé à une scène l'affiche dans son premier état ; refait quand
 la scène est affichée, il passe à l'état suivant par la transition (ignoré
-pendant une transition). Un fondu de 0,6 s masque le raccord quand une
+pendant une transition). Fait pendant qu'une autre scène est affichée
+(deux variantes d'un même décor, par exemple), il fait avancer celle-ci. Un fondu de 0,6 s masque le raccord quand une
 boucle est interrompue. Un fichier `masque.jpg` facultatif dans le dossier
 indique en blanc les zones à ne pas tamiser en l'absence de personne (une
 fenêtre sur l'extérieur, par exemple). Les clips ne sont pas fournis : n'importe quelles

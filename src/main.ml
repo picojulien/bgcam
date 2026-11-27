@@ -265,6 +265,18 @@ let rec apply b action =
         | _ -> ());
       b.current <- name
 
+(* Action d'un geste. Un geste lié à une scène, fait pendant qu'une autre
+   scène est affichée (deux variantes d'un même décor, par exemple), fait
+   avancer la scène affichée au lieu d'en changer. *)
+let gesture_apply b action =
+  let is_scene name =
+    match List.assoc_opt name b.cfg.backgrounds with
+    | Some p -> Sys.file_exists p && Sys.is_directory p
+    | None -> false
+  in
+  if action <> b.current && is_scene action && is_scene b.current then apply b b.current
+  else apply b action
+
 let backgrounds (cfg : Config.t) =
   let order = ("blur" :: List.map fst cfg.backgrounds) @ [ "none" ] in
   let b =
@@ -574,7 +586,7 @@ let run ~config ~bg ~camera ~flip ~no_output ~input ~snapshot ~max_frames ~recor
          Option.iter
            (fun wt ->
              offer wt frame;
-             Option.iter (apply bgs) (Atomic.exchange wt.action None))
+             Option.iter (gesture_apply bgs) (Atomic.exchange wt.action None))
            watcher;
          Option.iter (apply bgs) (Atomic.exchange live.request None);
          if live.blur <> !blur_strength then (
